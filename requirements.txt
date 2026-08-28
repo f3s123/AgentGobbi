@@ -1,0 +1,29 @@
+# 에이전트고삐 MVP
+# python 3.11 기준. 아래 버전으로 개발·검증했습니다.
+#
+# ※ 반드시 전용 가상환경에 설치하세요.
+#   pandas 3.x / numpy 2.4 를 요구하므로, 다른 패키지가 함께 사는 공용 환경
+#   (conda base 등)에 설치하면 numba(numpy<2.4), streamlit(pandas<3) 같은
+#   기존 패키지가 깨집니다.
+#
+#   python -m venv .venv
+#   .venv\Scripts\activate          (Windows)
+#   pip install -r requirements.txt
+
+# --- 데이터 / 머신러닝 ---
+numpy==2.4.4
+pandas==3.0.2
+scikit-learn==1.8.0
+lightgbm==4.6.0
+joblib==1.5.3
+openpyxl==3.1.5          # 농협 입출금내역 xlsx 읽기
+
+# --- API 서버 ---
+fastapi==0.115.14
+uvicorn==0.34.3
+pydantic==2.11.4
+
+# --- 생성형 AI (선택) ---
+# ANTHROPIC_API_KEY 가 설정된 경우에만 사용합니다.
+# 없으면 동일 기능이 규칙 기반 경로로 동작하므로 설치하지 않아도 MVP는 완전히 실행됩니다.
+anthropic==1.1.0
