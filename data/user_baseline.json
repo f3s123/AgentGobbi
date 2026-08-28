@@ -1,0 +1,345 @@
+{
+  "user_id": "U-NH-475126",
+  "period": {
+    "from": "2025-09-01 10:16:32",
+    "to": "2026-08-26 21:24:34"
+  },
+  "n_tx": 615,
+  "amount": {
+    "mean": 37055.141463414635,
+    "std": 97376.47252974451,
+    "median": 12870.0,
+    "log_mu": 9.424357648250403,
+    "log_sigma": 1.331383916649671,
+    "p90": 50000.0,
+    "p95": 112312.99999999977,
+    "p99": 605000.0,
+    "max": 605000.0
+  },
+  "daily": {
+    "tx_count_mean": 2.1731448763250882,
+    "tx_count_std": 1.207333160580083,
+    "tx_count_p95": 4.0,
+    "amount_sum_mean": 80526.19081272084,
+    "amount_sum_std": 162220.64394098523,
+    "amount_sum_p95": 467171.0,
+    "active_days": 283
+  },
+  "interval_sec": {
+    "mean": 50582.54397394137,
+    "median": 33415.5,
+    "p05": 1364.4,
+    "p25": 9603.25
+  },
+  "hour_hist": {
+    "7": 28,
+    "8": 44,
+    "9": 32,
+    "10": 39,
+    "11": 53,
+    "12": 24,
+    "13": 39,
+    "14": 7,
+    "15": 15,
+    "16": 17,
+    "17": 42,
+    "18": 60,
+    "19": 50,
+    "20": 36,
+    "21": 67,
+    "22": 52,
+    "23": 10
+  },
+  "category_share": {
+    "SIMPLE_PAY": 0.28292682926829266,
+    "TRANSPORT": 0.20650406504065041,
+    "CONVENIENCE": 0.10894308943089431,
+    "SHOPPING": 0.08943089430894309,
+    "FOOD": 0.06341463414634146,
+    "ENTERTAIN": 0.05365853658536585,
+    "SUBSCRIPTION": 0.04878048780487805,
+    "UTILITY": 0.03902439024390244,
+    "P2P": 0.022764227642276424,
+    "SAVINGS": 0.01951219512195122,
+    "CLOUD": 0.01951219512195122,
+    "RENT": 0.01951219512195122,
+    "LIVING": 0.013008130081300813,
+    "ETC": 0.013008130081300813
+  },
+  "new_recipient_rate": 0.055284552845528454,
+  "n_known_recipients": 34,
+  "known_recipients": {
+    "R-DFF4009A": {
+      "name": "카카오페이",
+      "category": "SIMPLE_PAY",
+      "recipient_type": "MERCHANT",
+      "n": 140,
+      "mean_amount": 22317.97857142857,
+      "max_amount": 115960.0
+    },
+    "R-A129E792": {
+      "name": "한국철도공사",
+      "category": "TRANSPORT",
+      "recipient_type": "MERCHANT",
+      "n": 33,
+      "mean_amount": 9863.030303030304,
+      "max_amount": 14330.0
+    },
+    "R-DA2D9676": {
+      "name": "철도 승차권",
+      "category": "TRANSPORT",
+      "recipient_type": "MERCHANT",
+      "n": 30,
+      "mean_amount": 13571.333333333334,
+      "max_amount": 19140.0
+    },
+    "R-5FFB8C90": {
+      "name": "세븐일레븐",
+      "category": "CONVENIENCE",
+      "recipient_type": "MERCHANT",
+      "n": 27,
+      "mean_amount": 3018.5185185185187,
+      "max_amount": 4910.0
+    },
+    "R-FF775B38": {
+      "name": "다이소",
+      "category": "SHOPPING",
+      "recipient_type": "MERCHANT",
+      "n": 27,
+      "mean_amount": 1780.7407407407406,
+      "max_amount": 5260.0
+    },
+    "R-43DC923B": {
+      "name": "CU",
+      "category": "CONVENIENCE",
+      "recipient_type": "MERCHANT",
+      "n": 25,
+      "mean_amount": 7401.6,
+      "max_amount": 13270.0
+    },
+    "R-9EF12BDA": {
+      "name": "네이버페이",
+      "category": "SIMPLE_PAY",
+      "recipient_type": "MERCHANT",
+      "n": 24,
+      "mean_amount": 23676.25,
+      "max_amount": 70250.0
+    },
+    "R-E01EC942": {
+      "name": "코레일유통",
+      "category": "TRANSPORT",
+      "recipient_type": "MERCHANT",
+      "n": 23,
+      "mean_amount": 1643.4782608695652,
+      "max_amount": 2240.0
+    },
+    "R-CA67AFD2": {
+      "name": "드림월드플러스",
+      "category": "ENTERTAIN",
+      "recipient_type": "MERCHANT",
+      "n": 19,
+      "mean_amount": 4764.736842105263,
+      "max_amount": 6950.0
+    },
+    "R-1FE1CD0B": {
+      "name": "카카오T",
+      "category": "TRANSPORT",
+      "recipient_type": "MERCHANT",
+      "n": 17,
+      "mean_amount": 6350.588235294118,
+      "max_amount": 18080.0
+    },
+    "R-063190C0": {
+      "name": "식비 정산",
+      "category": "FOOD",
+      "recipient_type": "PERSON",
+      "n": 16,
+      "mean_amount": 21375.625,
+      "max_amount": 45230.0
+    },
+    "R-A11923FE": {
+      "name": "코인노래연습장",
+      "category": "ENTERTAIN",
+      "recipient_type": "MERCHANT",
+      "n": 14,
+      "mean_amount": 20831.428571428572,
+      "max_amount": 26350.0
+    },
+    "R-632885C6": {
+      "name": "천막집",
+      "category": "FOOD",
+      "recipient_type": "MERCHANT",
+      "n": 14,
+      "mean_amount": 44804.28571428572,
+      "max_amount": 67360.0
+    },
+    "R-C592FAA4": {
+      "name": "NH 후불교통",
+      "category": "TRANSPORT",
+      "recipient_type": "BILL",
+      "n": 13,
+      "mean_amount": 36307.692307692305,
+      "max_amount": 47030.0
+    },
+    "R-06F2845E": {
+      "name": "월세",
+      "category": "RENT",
+      "recipient_type": "BILL",
+      "n": 12,
+      "mean_amount": 605000.0,
+      "max_amount": 605000.0
+    },
+    "R-0377D3AE": {
+      "name": "NHN KCP 결제",
+      "category": "SHOPPING",
+      "recipient_type": "MERCHANT",
+      "n": 12,
+      "mean_amount": 51689.166666666664,
+      "max_amount": 65690.0
+    },
+    "R-1B011FB9": {
+      "name": "예스코 도시가스",
+      "category": "UTILITY",
+      "recipient_type": "BILL",
+      "n": 12,
+      "mean_amount": 9540.0,
+      "max_amount": 23350.0
+    },
+    "R-4AEE6796": {
+      "name": "Claude 구독",
+      "category": "SUBSCRIPTION",
+      "recipient_type": "MERCHANT",
+      "n": 12,
+      "mean_amount": 363219.25,
+      "max_amount": 604440.0
+    },
+    "R-90EF702F": {
+      "name": "AWS",
+      "category": "CLOUD",
+      "recipient_type": "MERCHANT",
+      "n": 12,
+      "mean_amount": 16024.916666666666,
+      "max_amount": 22390.0
+    },
+    "R-ED8051D7": {
+      "name": "통신요금",
+      "category": "UTILITY",
+      "recipient_type": "BILL",
+      "n": 12,
+      "mean_amount": 12505.833333333334,
+      "max_amount": 12870.0
+    },
+    "R-86D30E2D": {
+      "name": "주택청약저축",
+      "category": "SAVINGS",
+      "recipient_type": "SELF",
+      "n": 12,
+      "mean_amount": 50000.0,
+      "max_amount": 50000.0
+    },
+    "R-4365677C": {
+      "name": "유튜브 프리미엄",
+      "category": "SUBSCRIPTION",
+      "recipient_type": "MERCHANT",
+      "n": 11,
+      "mean_amount": 14900.0,
+      "max_amount": 14900.0
+    },
+    "R-C8E97166": {
+      "name": "교통비",
+      "category": "TRANSPORT",
+      "recipient_type": "BILL",
+      "n": 11,
+      "mean_amount": 32835.0,
+      "max_amount": 39000.0
+    },
+    "R-E5E4EB73": {
+      "name": "네이버페이 충전",
+      "category": "SIMPLE_PAY",
+      "recipient_type": "SELF",
+      "n": 10,
+      "mean_amount": 19835.0,
+      "max_amount": 22710.0
+    },
+    "R-27FB6E42": {
+      "name": "밤새출력",
+      "category": "SHOPPING",
+      "recipient_type": "MERCHANT",
+      "n": 10,
+      "mean_amount": 1675.0,
+      "max_amount": 2310.0
+    },
+    "R-20FDDA1B": {
+      "name": "할인마켓 SW365",
+      "category": "CONVENIENCE",
+      "recipient_type": "MERCHANT",
+      "n": 10,
+      "mean_amount": 1353.0,
+      "max_amount": 2040.0
+    },
+    "R-38A2E019": {
+      "name": "신이1981",
+      "category": "P2P",
+      "recipient_type": "PERSON",
+      "n": 9,
+      "mean_amount": 30012.222222222223,
+      "max_amount": 37370.0
+    },
+    "R-44CC606F": {
+      "name": "간식 정산",
+      "category": "FOOD",
+      "recipient_type": "PERSON",
+      "n": 9,
+      "mean_amount": 2596.6666666666665,
+      "max_amount": 3760.0
+    },
+    "R-049317A5": {
+      "name": "워시팡팡 빨래방",
+      "category": "LIVING",
+      "recipient_type": "MERCHANT",
+      "n": 8,
+      "mean_amount": 9620.0,
+      "max_amount": 12630.0
+    },
+    "R-F207F4B7": {
+      "name": "샤브온당고",
+      "category": "ETC",
+      "recipient_type": "MERCHANT",
+      "n": 8,
+      "mean_amount": 26067.5,
+      "max_amount": 33240.0
+    },
+    "R-418D2E0F": {
+      "name": "구글플레이",
+      "category": "SUBSCRIPTION",
+      "recipient_type": "MERCHANT",
+      "n": 7,
+      "mean_amount": 2132.8571428571427,
+      "max_amount": 2480.0
+    },
+    "R-8BF547E9": {
+      "name": "전자기기 구매",
+      "category": "SHOPPING",
+      "recipient_type": "MERCHANT",
+      "n": 6,
+      "mean_amount": 156678.33333333334,
+      "max_amount": 212520.0
+    },
+    "R-09F878EF": {
+      "name": "이마트24",
+      "category": "CONVENIENCE",
+      "recipient_type": "MERCHANT",
+      "n": 5,
+      "mean_amount": 2230.0,
+      "max_amount": 2940.0
+    },
+    "R-DFEA2402": {
+      "name": "이재윤",
+      "category": "P2P",
+      "recipient_type": "PERSON",
+      "n": 5,
+      "mean_amount": 97026.0,
+      "max_amount": 142210.0
+    }
+  }
+}
