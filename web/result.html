@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시뮬레이션 결과 · 에이전트고삐</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">에이전트고삐 <small>AI에게 맡기되, 통제는 내가.</small></div>
+  <nav class="nav">
+    <a id="nav-policy" href="/index.html">위임정책</a>
+    <a id="nav-sim" href="/simulate.html">시뮬레이션</a>
+    <a id="nav-result" href="/result.html">결과</a>
+  </nav>
+</header>
+
+<main class="wrap wide" id="root">
+  <div class="empty">불러오는 중…</div>
+</main>
+
+<script src="/static/app.js"></script>
+<script>
+markNav('nav-result');
+
+const params = new URLSearchParams(location.search);
+const runId = params.get('run') || sessionStorage.getItem('lastRun');
+
+/* ---------- 상단: 행위 요약 ---------- */
+function topSummary(r) {
+  const st = r.stats, e = r.explanation || {};
+  const p = r.permission.permission;
+  return `
+  <section class="panel result-top">
+    <div class="summary-head">
+      <div style="flex:1; min-width:340px">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap">
+          ${permBadge(p)}
+          <span class="tag" style="font-size:11px; color:var(--text-faint); font-family:var(--mono);
+                border:1px solid var(--line); padding:2px 8px; border-radius:999px">${esc(r.scenario.tag)}</span>
+          <span class="faint small">${esc(st.start_time)} ~ ${esc(st.end_time)}</span>
+        </div>
+        <h2>${esc(e.headline || r.scenario.title)}</h2>
+        <p class="lead">${esc(e.summary || r.scenario.summary)}</p>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="k">요청 행동</div><div class="v">${st.total_actions}건</div></div>
+      <div class="stat"><div class="k">요청 금액</div><div class="v sm">${won(st.requested_amount)}</div></div>
+      <div class="stat"><div class="k">실행됨</div>
+        <div class="v sm" style="color:var(--auto)">${st.executed}건 · ${won(st.executed_amount)}</div></div>
+      <div class="stat"><div class="k">차단·보류</div>
+        <div class="v sm" style="color:var(--stop)">${st.blocked + st.pending}건 · ${won(st.blocked_amount)}</div></div>
+      <div class="stat"><div class="k">신규 수취인</div><div class="v">${st.new_recipients}명</div></div>
+      <div class="stat"><div class="k">진행 시간</div><div class="v">${esc(st.span_text)}</div></div>
+    </div>
+  </section>`;
+}
+
+/* ---------- 좌하단 위: 권한 ---------- */
+function permCard(r) {
+  const p = r.permission.permission;
+  const ladder = PERM_ORDER.map(x => {
+    const on = x === p;
+    return `<div class="rung ${on ? 'on' : ''}"
+              style="${on ? `color:${PERM_COLOR[x]}; background:rgba(255,255,255,.04); border-color:${PERM_COLOR[x]}` : ''}">
+              <span style="width:6px;height:6px;border-radius:50%;background:${on ? PERM_COLOR[x] : '#39424e'}"></span>
+              ${x}<span class="cap">${PERM_CAP[x]}</span>
+            </div>`;
+  }).join('');
+
+  const restore = (p !== 'AUTO')
+    ? `<button class="btn" id="btn-restore" style="width:100%; margin-top:16px">본인 확인 후 권한 복원</button>
+       <p class="faint small" style="margin:9px 0 0; line-height:1.5">
+         권한은 위험에 따라 자동으로 축소되지만, 되돌리는 것은 시스템이 하지 않습니다.
+         반드시 사용자 본인이 승인해야 복원됩니다.</p>
+       <div id="restore-msg" style="margin-top:10px"></div>`
+    : `<p class="faint small" style="margin:16px 0 0; line-height:1.5">
+         위임 범위 안에서 정상 동작 중입니다. 위험 신호가 나타나면 즉시 권한이 축소됩니다.</p>`;
+
+  return `
+  <section class="panel perm-card">
+    <div class="panel-title" style="justify-content:center; margin-bottom:0">현재 AI Agent 권한</div>
+    <div class="big" style="color:${PERM_COLOR[p]}">${p}</div>
+    <div class="lbl" style="color:${PERM_COLOR[p]}">${PERM_LABEL[p]}</div>
+    <div class="desc">${esc(r.permission.description)}</div>
+    <div class="perm-ladder">${ladder}</div>
+    ${restore}
+  </section>`;
+}
+
+/* ---------- 좌하단 아래: 위험도 점수 ---------- */
+function scoreCard(r) {
+  const s = r.scores;
+  const sub = [
+    ['행동 시퀀스 위험도', s.sequence_risk, 'LightGBM'],
+    ['평소 행동 이탈도', s.personal_deviation, 'IsolationForest'],
+    ['위임정책 위반', s.policy_risk, 'Policy Engine']
+  ].map(([k, v, m]) => `
+    <div class="sub">
+      <div class="r"><span class="muted">${k} <span class="faint">· ${m}</span></span><b>${v.toFixed(0)}</b></div>
+      <div class="bar"><i style="width:${Math.min(v, 100)}%"></i></div>
+    </div>`).join('');
+
+  return `
+  <section class="panel">
+    <div class="panel-title">Delegation Risk Score</div>
+    <div style="display:flex; align-items:baseline; gap:10px">
+      <span class="score-big" style="color:${riskColor(s.total_risk)}">${s.total_risk.toFixed(0)}</span>
+      <span class="faint">/ 100</span>
+      <span class="score-band" style="margin-left:auto; color:${riskColor(s.total_risk)}">위험 ${esc(s.band)}</span>
+    </div>
+    <div class="meter">
+      <i style="width:${Math.min(s.total_risk, 100)}%; background:${riskColor(s.total_risk)}"></i>
+    </div>
+    <div class="meter-scale"><span>0 AUTO</span><span>30 VERIFY</span><span>55 READ</span><span>78 STOP</span></div>
+    <div class="sub-scores">${sub}</div>
+    <p class="faint small" style="margin:14px 0 0; line-height:1.5">
+      세 점수를 0.5 : 0.3 : 0.2 로 합산한 값입니다.
+      최고 위험 시점(#${r.stats.peak_seq}번째 행동) 기준으로 표시합니다.</p>
+  </section>`;
+}
+
+/* ---------- 우하단: 자세한 결과 설명 ---------- */
+function explainCard(r) {
+  const e = r.explanation || {};
+  const factors = r.factors.map(f => `
+    <div class="factor ${f.level}">
+      <div class="fl"><span>${esc(f.label)}</span>
+        ${f.level !== 'NORMAL' ? `<span class="badge ${f.level}">${f.level === 'RISK' ? '위험' : '주의'}</span>` : ''}</div>
+      <div class="fv">${esc(f.value)}</div>
+      <div class="fn">${esc(f.note)}</div>
+    </div>`).join('');
+
+  const violations = r.violations.length ? `
+    <div class="notice err" style="margin-bottom:16px">
+      <b>위임정책 위반 ${r.violations.length}건</b>
+      <ul>${r.violations.map(v => `<li>${esc(v.label)} — ${esc(v.message)}</li>`).join('')}</ul>
+    </div>` : '';
+
+  const events = r.permission_events.length ? `
+    <h3 style="font-size:14px; margin:22px 0 10px">권한이 바뀐 시점</h3>
+    <div class="events">
+      ${r.permission_events.map(ev => `
+        <div class="event">
+          <span class="t">${esc(ev.time)}</span>
+          <div class="body">
+            <div class="transition">
+              ${ev.seq ? `<span class="faint small">#${ev.seq}</span>` : '<span class="faint small">사용자</span>'}
+              ${permBadge(ev.from)}<span class="faint">→</span>${permBadge(ev.to)}
+              <span class="faint small mono">위험도 ${ev.risk.toFixed(0)}</span>
+            </div>
+            <div class="why">${esc(ev.reason)}</div>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  return `
+  <section class="panel explain">
+    <div class="panel-title">자세한 결과 설명</div>
+    ${violations}
+    <h3>${esc(e.headline || '')}</h3>
+    <p class="para strong">${esc(e.detail || '')}</p>
+    <div class="rec"><b>이렇게 하시면 됩니다 &nbsp;</b>${esc(e.recommendation || '')}</div>
+
+    <h3 style="font-size:14px; margin:24px 0 10px">분석 항목 8가지</h3>
+    <div class="factors">${factors}</div>
+    ${events}
+    <p class="faint small" style="margin:18px 0 0">
+      설명 생성: ${r.llm.enabled ? esc(r.llm.model) : '규칙 기반 모드'}
+      · 수치는 모두 탐지 엔진이 계산한 값입니다.</p>
+  </section>`;
+}
+
+/* ---------- 하단: 행동 타임라인 ---------- */
+function timeline(r) {
+  const rows = r.steps.map(s => `
+    <tr>
+      <td class="mono faint">${s.seq}</td>
+      <td class="mono">${esc(s.time)}</td>
+      <td>${esc(s.action_label)}</td>
+      <td>${esc(s.recipient_name)}${s.is_new_recipient ? '<span class="newtag">신규</span>' : ''}</td>
+      <td class="faint">${esc(s.category_label)}</td>
+      <td class="num">${esc(s.amount_text)}</td>
+      <td><span class="risk-cell" style="color:${riskColor(s.scores.total_risk)}; background:rgba(255,255,255,.045)">${s.scores.total_risk.toFixed(0)}</span></td>
+      <td>${permBadge(s.permission)}</td>
+      <td><span class="oc ${s.outcome}">${
+        { EXECUTED: '실행', PENDING_APPROVAL: '승인 대기', BLOCKED: '차단', REJECTED_BY_BANK: '은행 거절' }[s.outcome]
+      }</span></td>
+      <td class="faint small">${esc(s.memo)}</td>
+    </tr>`).join('');
+
+  return `
+  <section class="panel" style="margin-top:18px">
+    <div class="panel-title">AI Agent 행동 타임라인</div>
+    <div style="overflow-x:auto">
+      <table class="tl">
+        <thead><tr>
+          <th>#</th><th>시각</th><th>행동</th><th>수취인</th><th>유형</th>
+          <th style="text-align:right">금액</th><th>위험도</th><th>권한</th><th>처리</th><th>비고</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </section>`;
+}
+
+function render(r) {
+  document.getElementById('root').innerHTML =
+    topSummary(r) +
+    `<div class="result-bottom">
+       <div class="left-col">${permCard(r)}${scoreCard(r)}</div>
+       <div>${explainCard(r)}</div>
+     </div>` +
+    timeline(r);
+
+  const btn = document.getElementById('btn-restore');
+  if (btn) btn.addEventListener('click', async () => {
+    const msg = document.getElementById('restore-msg');
+    if (!confirm('AI Agent의 금융 실행 권한을 AUTO로 복원하시겠습니까?\n\n' +
+                 '본인이 직접 승인하는 절차입니다. 최근 거래 내역을 확인하신 뒤 진행해 주세요.')) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> 복원 중';
+    try {
+      await API.post('/api/permission/restore',
+        { run_id: r.run_id, target: 'AUTO', user_confirmed: true });
+      const fresh = await API.get('/api/result/' + r.run_id);
+      render(fresh);
+      document.getElementById('restore-msg') &&
+        (document.getElementById('restore-msg').innerHTML =
+          '<div class="notice ok small">권한을 복원했습니다.</div>');
+    } catch (e) {
+      msg.innerHTML = `<div class="notice err small">${esc(e.message)}</div>`;
+      btn.disabled = false;
+      btn.textContent = '본인 확인 후 권한 복원';
+    }
+  });
+}
+
+(async () => {
+  try {
+    const r = await API.get(runId ? '/api/result/' + runId : '/api/result');
+    render(r);
+  } catch (e) {
+    document.getElementById('root').innerHTML = `
+      <div class="empty">
+        <p>아직 실행한 시뮬레이션이 없습니다.</p>
+        <a class="btn primary" href="/simulate.html" style="margin-top:12px">시뮬레이션 하러 가기</a>
+      </div>`;
+  }
+})();
+</script>
+</body>
+</html>

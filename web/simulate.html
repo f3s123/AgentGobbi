@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시뮬레이션 · 에이전트고삐</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">에이전트고삐 <small>AI에게 맡기되, 통제는 내가.</small></div>
+  <nav class="nav">
+    <a id="nav-policy" href="/index.html">위임정책</a>
+    <a id="nav-sim" href="/simulate.html">시뮬레이션</a>
+    <a id="nav-result" href="/result.html">결과</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="page-head">
+    <h1>AI Agent의 거래 시나리오를 시뮬레이션합니다</h1>
+    <p>실제 금융 AI Agent 대신, Agent가 보낼 법한 거래 요청 시퀀스를 흘려보내
+       에이전트고삐가 어느 시점에 권한을 조정하는지 확인합니다.
+       시나리오를 하나 고르고 시뮬레이션을 시작하세요.</p>
+  </div>
+
+  <div class="panel" style="margin-bottom:18px">
+    <h2 class="panel-title">적용 중인 위임정책</h2>
+    <div id="policy-line" class="muted small">불러오는 중…</div>
+  </div>
+
+  <div class="panel">
+    <h2 class="panel-title"><span class="num">1</span> 시나리오 선택</h2>
+    <div class="scn-grid" id="scn-grid"></div>
+  </div>
+
+  <div class="panel">
+    <h2 class="panel-title"><span class="num">2</span> 시뮬레이션 시작</h2>
+    <div id="picked" class="muted small" style="margin:-6px 0 14px">
+      아직 선택된 시나리오가 없습니다.
+    </div>
+    <div class="btn-row">
+      <button class="btn primary lg" id="btn-run" disabled>시뮬레이션 시작</button>
+      <span class="tagline">LightGBM 시퀀스 위험도 + IsolationForest 개인 이탈도 + 위임정책 검증</span>
+    </div>
+    <div id="run-msg" style="margin-top:14px"></div>
+  </div>
+</main>
+
+<script src="/static/app.js"></script>
+<script>
+markNav('nav-sim');
+
+let scenarios = [];
+let selected = null;
+
+async function load() {
+  try {
+    const [s, p] = await Promise.all([API.get('/api/scenarios'), API.get('/api/policy')]);
+    scenarios = s.scenarios;
+    const pol = p.policy;
+    document.getElementById('policy-line').innerHTML =
+      `건당 자동실행 <b>${won(pol.auto_limit)}</b> · 1일 누적 <b>${won(pol.daily_limit)}</b> ·
+       신규 수취인 <b>${pol.new_recipient.action === 'BLOCK' ? '차단' : pol.new_recipient.action === 'AUTO' ? '자동 허용' : '본인 승인'}</b>
+       ${pol.source === 'default' ? '<span class="faint">(기본값 — 위임정책 화면에서 직접 설정하실 수 있습니다)</span>' : ''}`;
+
+    document.getElementById('scn-grid').innerHTML = scenarios.map(s => `
+      <button class="scn" data-id="${s.id}">
+        <div class="scn-top">
+          <h3>${esc(s.title)}</h3>
+          <span class="tag">${esc(s.tag)}</span>
+        </div>
+        <p>${esc(s.summary)}</p>
+        <div class="stages">
+          <span class="faint" style="font-size:11px">도달 권한</span>
+          ${(s.stages || [s.expected]).map((p, i) =>
+            (i ? '<span class="arrow">›</span>' : '') + stagePill(p)).join('')}
+        </div>
+      </button>`).join('');
+  } catch (e) {
+    document.getElementById('scn-grid').innerHTML = `<div class="notice err">${esc(e.message)}</div>`;
+  }
+}
+
+document.getElementById('scn-grid').addEventListener('click', ev => {
+  const b = ev.target.closest('.scn');
+  if (!b) return;
+  document.querySelectorAll('.scn').forEach(x => x.classList.remove('sel'));
+  b.classList.add('sel');
+  selected = scenarios.find(s => s.id === b.dataset.id);
+  document.getElementById('picked').innerHTML =
+    `선택: <b>${esc(selected.title)}</b> — ${esc(selected.detail)}`;
+  document.getElementById('btn-run').disabled = false;
+});
+
+document.getElementById('btn-run').addEventListener('click', async () => {
+  if (!selected) return;
+  const btn = document.getElementById('btn-run');
+  const msg = document.getElementById('run-msg');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Agent 행동을 평가하는 중';
+  msg.innerHTML = '';
+  try {
+    const r = await API.post('/api/simulate', { scenario_id: selected.id, explain: true });
+    sessionStorage.setItem('lastRun', r.run_id);
+    location.href = '/result.html?run=' + r.run_id;
+  } catch (e) {
+    msg.innerHTML = `<div class="notice err">${esc(e.message)}</div>`;
+    btn.disabled = false;
+    btn.textContent = '시뮬레이션 시작';
+  }
+});
+
+load();
+</script>
+</body>
+</html>
