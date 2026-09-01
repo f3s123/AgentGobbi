@@ -242,7 +242,7 @@ SCENARIOS = [
         "tag": "Limit Ratcheting",
         "expected": "STOP",
         "stages": ["AUTO", "VERIFY", "READ_ONLY", "STOP"],
-        "summary": "건당 50만원 한도를 지키면서 49만원씩 서로 다른 신규 계좌로 반복 송금합니다.",
+        "summary": "건당 하루 한도를 지키면서 49만원씩 서로 다른 신규 계좌로 반복 송금합니다.",
         "detail": "개별 거래는 모두 정책 위반이 아니지만, 전체 흐름은 한도를 회피한 분할 실행입니다.",
         "start_hour": 14, "builder": _limit_ratcheting,
     },
@@ -283,7 +283,7 @@ SCENARIOS = [
         "expected": "STOP",
         "stages": ["AUTO", "READ_ONLY", "STOP"],
         "summary": "조회로 잔액을 확인한 뒤 신규 계좌로 잔액 전체를 옮기려 시도합니다.",
-        "detail": "PaySim 데이터에서 계좌 탈취 사기가 보이는 전형적 패턴과 동일한 구조입니다.",
+        "detail": "계좌 탈취 사기의 전형적 패턴과 동일한 구조입니다.",
         "start_hour": 3, "builder": _account_drain,
     },
     {
