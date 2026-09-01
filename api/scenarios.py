@@ -68,6 +68,7 @@ def _normal_daily(policy=None):
            memo="지인 정산"),
     ]
 
+#---------------------------------------------------------------------------
 '''
 기존 코드
 '''
@@ -149,7 +150,7 @@ def _limit_ratcheting(policy):
 
     return acts
 
-
+#---------------------------------------------------------------------------
 def _recipient_burst_night(policy=None):
     """심야에 처음 보는 계좌 다수로 연속 송금."""
     acts = [_a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
@@ -157,12 +158,13 @@ def _recipient_burst_night(policy=None):
     amounts = [180_000, 240_000, 155_000, 320_000, 210_000, 275_000, 190_000]
     off = 90
     for i, amt in enumerate(amounts):
-        acts.append(_a(off, amt, _new(chr(ord("가") + i)), "P2P",
+        tag = chr(ord("A") + i)  # A, B, C, D, E, F, G
+        acts.append(_a(off, amt, _new(tag), "P2P",
                        "TRANSFER", "transfer.execute", memo="신규 수취인 송금"))
         off += 45 + i * 20
     return acts
 
-
+#---------------------------------------------------------------------------
 def _cumulative_bypass(policy=None):
     """건당 한도는 지키면서 하루 누적한도만 넘긴다."""
     acts = [_a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read")]
