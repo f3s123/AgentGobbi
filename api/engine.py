@@ -35,6 +35,7 @@ class RiskEngine:
     def __init__(self):
         lg = joblib.load(MODEL_DIR / "lgbm_sequence.pkl")
         self.lgbm = lg["model"]
+        self.lgbm_features = lg.get("features", SEQ_FEATURES)
         self.lgbm_metrics = lg["metrics"]
         self.lgbm_importance = lg["importance"]
 
@@ -50,7 +51,7 @@ class RiskEngine:
     # ------------------------------------------------------------------
     def sequence_risk(self, action, history, policy):
         f = compute_sequence_features(action, history, policy, self.baseline)
-        x = np.array([[f[n] for n in SEQ_FEATURES]], dtype=np.float64)
+        x = np.array([[f[n] for n in self.lgbm_features]], dtype=np.float64)
         p = float(self.lgbm.predict_proba(x)[0, 1])
         return round(p * 100.0, 1), f
 
@@ -211,9 +212,9 @@ class RiskEngine:
         return {
             "lightgbm": {
                 "name": "LightGBM · Agent 행동 시퀀스 위험도",
-                "features": len(SEQ_FEATURES),
-                "roc_auc": self.lgbm_metrics["roc_auc"],
-                "pr_auc": self.lgbm_metrics["pr_auc"],
+                "features": len(self.lgbm_features),
+                "roc_auc": self.lgbm_metrics.get("roc_auc", (self.lgbm_metrics.get("session_holdout") or {}).get("roc_auc")),
+                "pr_auc": self.lgbm_metrics.get("pr_auc", (self.lgbm_metrics.get("session_holdout") or {}).get("pr_auc")),
                 "train_rows": self.lgbm_metrics["n_train"],
                 "top_features": sorted(self.lgbm_importance.items(),
                                        key=lambda kv: -kv[1])[:8],
