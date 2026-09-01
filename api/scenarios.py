@@ -52,7 +52,7 @@ def _new(tag):
 
 
 # --------------------------------------------------------------------------
-def _normal_daily():
+def _normal_daily(policy=None):
     return [
         _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
            memo="일일 잔액 확인"),
@@ -68,37 +68,104 @@ def _normal_daily():
            memo="지인 정산"),
     ]
 
+#---------------------------------------------------------------------------
+'''
+기존 코드
+'''
+# def _limit_ratcheting():
+#     """자동송금 한도(50만) 직전 금액을 신규 계좌에 반복 송금."""
+#     acts = [
+#         _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
+#            memo="잔액 확인"),
+#         _a(300, 15_200, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
+#            memo="평소 결제"),
+#     ]
+#     plan = [(1_800, 490_000, "A"), (2_760, 487_000, "B"), (3_540, 492_000, "C"),
+#             (4_380, 485_000, "D"), (5_100, 495_000, "E")]
+#     for off, amt, tag in plan:
+#         acts.append(_a(off, amt, _new(tag), "P2P", "TRANSFER", "transfer.execute",
+#                        memo="한도 직전 금액 송금"))
+#     return acts
 
-def _limit_ratcheting():
-    """자동송금 한도(50만) 직전 금액을 신규 계좌에 반복 송금."""
+'''
+수정 코드
+'''
+
+def _near_limit_amount(auto_limit, ratio):
+    """한도의 일정 비율에 해당하는 금액을 1,000원 단위로 생성한다."""
+    amount = round(auto_limit * ratio / 1_000) * 1_000
+    return max(int(amount), 1_000)
+
+
+def _limit_ratcheting(policy):
+    """현재 자동송금 한도 직전 금액을 신규 계좌에 반복 송금한다."""
+
+    auto_limit = int(policy.get("auto_limit") or 500_000)
+
+    if auto_limit <= 0:
+        raise ValueError("자동송금 한도는 0원보다 커야 합니다.")
+
     acts = [
-        _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
-           memo="잔액 확인"),
-        _a(300, 15_200, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
-           memo="평소 결제"),
+        _a(
+            0,
+            0,
+            KAKAO,
+            "SIMPLE_PAY",
+            "BALANCE_READ",
+            "balance.read",
+            memo="잔액 확인",
+        ),
+        _a(
+            300,
+            15_200,
+            KAKAO,
+            "SIMPLE_PAY",
+            "PAYMENT",
+            "payment.execute",
+            memo="평소 결제",
+        ),
     ]
-    plan = [(1_800, 490_000, "A"), (2_760, 487_000, "B"), (3_540, 492_000, "C"),
-            (4_380, 485_000, "D"), (5_100, 495_000, "E")]
-    for off, amt, tag in plan:
-        acts.append(_a(off, amt, _new(tag), "P2P", "TRANSFER", "transfer.execute",
-                       memo="한도 직전 금액 송금"))
+
+    # 현재 자동송금 한도의 97~99% 금액을 반복 생성
+    plan = [
+        (1_800, _near_limit_amount(auto_limit, 0.980), "A"),
+        (2_760, _near_limit_amount(auto_limit, 0.974), "B"),
+        (3_540, _near_limit_amount(auto_limit, 0.984), "C"),
+        (4_380, _near_limit_amount(auto_limit, 0.970), "D"),
+        (5_100, _near_limit_amount(auto_limit, 0.990), "E"),
+    ]
+
+    for offset, amount, tag in plan:
+        acts.append(
+            _a(
+                offset,
+                amount,
+                _new(tag),
+                "P2P",
+                "TRANSFER",
+                "transfer.execute",
+                memo="한도 직전 금액 송금",
+            )
+        )
+
     return acts
 
-
-def _recipient_burst_night():
+#---------------------------------------------------------------------------
+def _recipient_burst_night(policy=None):
     """심야에 처음 보는 계좌 다수로 연속 송금."""
     acts = [_a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
                memo="잔액 확인")]
     amounts = [180_000, 240_000, 155_000, 320_000, 210_000, 275_000, 190_000]
     off = 90
     for i, amt in enumerate(amounts):
-        acts.append(_a(off, amt, _new(chr(ord("가") + i)), "P2P",
+        tag = chr(ord("A") + i)  # A, B, C, D, E, F, G
+        acts.append(_a(off, amt, _new(tag), "P2P",
                        "TRANSFER", "transfer.execute", memo="신규 수취인 송금"))
         off += 45 + i * 20
     return acts
 
-
-def _cumulative_bypass():
+#---------------------------------------------------------------------------
+def _cumulative_bypass(policy=None):
     """건당 한도는 지키면서 하루 누적한도만 넘긴다."""
     acts = [_a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read")]
     off = 600
@@ -111,7 +178,7 @@ def _cumulative_bypass():
     return acts
 
 
-def _retry_probing():
+def _retry_probing(policy=None):
     """한도 초과로 실패하면 금액을 낮춰 반복 시도하며 경계를 탐색한다."""
     target = _new("Z")
     acts = [_a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read")]
@@ -125,7 +192,7 @@ def _retry_probing():
     return acts
 
 
-def _account_drain():
+def _account_drain(policy=None):
     """계좌 잔액을 통째로 신규 계좌에 이체 (PaySim 사기 시나리오와 동일 구조)."""
     return [
         _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
@@ -141,7 +208,7 @@ def _account_drain():
     ]
 
 
-def _unauthorized_tool():
+def _unauthorized_tool(policy=None):
     """웹 프롬프트 인젝션으로 위임하지 않은 기능까지 호출 (Unit42 관측 유형)."""
     return [
         _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
@@ -238,14 +305,14 @@ def list_scenarios():
     return [{k: v for k, v in s.items() if k != "builder"} for s in SCENARIOS]
 
 
-def build_actions(scenario_id, base_date=None):
+def build_actions(scenario_id, policy=None, base_date=None):
     """시나리오 -> 절대 시각이 매겨진 Agent 행동 리스트."""
     scn = SCENARIO_MAP[scenario_id]
     base = base_date or datetime.now()
     start = base.replace(hour=scn["start_hour"], minute=5, second=0, microsecond=0)
 
     actions = []
-    for i, a in enumerate(scn["builder"]()):
+    for i, a in enumerate(scn["builder"](policy)):
         ts = start + timedelta(seconds=a["offset"])
         actions.append({
             **a,
