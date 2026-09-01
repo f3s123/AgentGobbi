@@ -199,11 +199,11 @@ def _account_drain(policy=None):
            memo="잔액 조회"),
         _a(35, 0, KAKAO, "SIMPLE_PAY", "HISTORY_READ", "history.read",
            memo="거래내역 조회"),
-        _a(95, 499_000, _new("Ω"), "P2P", "TRANSFER", "transfer.execute",
+        _a(95, 499_000, _new("A"), "P2P", "TRANSFER", "transfer.execute",
            memo="1차 송금"),
-        _a(160, 499_000, _new("Ω"), "P2P", "TRANSFER", "transfer.execute",
+        _a(160, 499_000, _new("B"), "P2P", "TRANSFER", "transfer.execute",
            memo="2차 송금"),
-        _a(215, 3_260_000, _new("Ω"), "P2P", "TRANSFER", "transfer.execute",
+        _a(215, 3_260_000, _new("C"), "P2P", "TRANSFER", "transfer.execute",
            memo="잔액 전액 이체 시도"),
     ]
 
