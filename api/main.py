@@ -18,6 +18,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# .env 파일에서 환경변수 로드
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException                       # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware               # noqa: E402
 from fastapi.responses import FileResponse                       # noqa: E402

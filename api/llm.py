@@ -32,14 +32,16 @@ _CLIENT = None
 def _client():
     global _CLIENT
     if _CLIENT is None:
-        import anthropic
-        _CLIENT = anthropic.Anthropic()
+        import google.generativeai as genai
+        api_key = __import__('os').environ.get("GOOGLE_API_KEY")
+        genai.configure(api_key=api_key)
+        _CLIENT = genai.GenerativeModel("gemini-3.6-flash")
     return _CLIENT
 
 
 def llm_status():
     return {"enabled": LLM_ENABLED, "model": LLM_MODEL if LLM_ENABLED else None,
-            "mode": "claude" if LLM_ENABLED else "rule-based"}
+            "mode": "gemini" if LLM_ENABLED else "rule-based"}
 
 
 def _won(x):
@@ -110,18 +112,33 @@ def compile_policy(text):
     raw, source = None, "rule-based"
     if LLM_ENABLED:
         try:
-            resp = _client().messages.create(
-                model=LLM_MODEL,
-                max_tokens=2000,
-                system=POLICY_SYSTEM,
-                messages=[{"role": "user", "content": text}],
-                output_config={"format": {"type": "json_schema", "schema": POLICY_SCHEMA}},
-            )
-            body = next(b.text for b in resp.content if b.type == "text")
+            # Gemini API 호출
+            prompt = f"""{POLICY_SYSTEM}
+
+사용자 입력:
+{text}
+
+응답은 다음 JSON 스키마를 정확히 따라 JSON으로만 반환하세요:
+{json.dumps(POLICY_SCHEMA, ensure_ascii=False)}"""
+            
+            resp = _client().generate_content(prompt)
+            # Gemini 응답에서 JSON 추출
+            body = resp.text
+            if body.startswith("```json"):
+                body = body[7:]  # ```json 제거
+            if body.startswith("```"):
+                body = body[3:]  # ``` 제거
+            if body.endswith("```"):
+                body = body[:-3]  # ``` 제거
+            body = body.strip()
             raw = json.loads(body)
-            source = "claude"
+            source = "gemini"
         except Exception as e:                      # 실패 시 조용히 규칙 기반으로
-            raw, source = None, "rule-based (fallback: %s)" % type(e).__name__
+            import traceback
+            error_msg = f"{type(e).__name__}: {str(e)}"
+            print(f"[DEBUG] LLM Error: {error_msg}")
+            traceback.print_exc()
+            raw, source = None, f"rule-based (fallback: {error_msg})"
 
     if raw is None:
         raw = _rule_compile(text)
@@ -410,17 +427,26 @@ def explain_result(ctx):
     """
     if LLM_ENABLED:
         try:
-            resp = _client().messages.create(
-                model=LLM_MODEL,
-                max_tokens=2000,
-                system=EXPLAIN_SYSTEM,
-                messages=[{"role": "user",
-                           "content": json.dumps(ctx, ensure_ascii=False, indent=2)}],
-                output_config={"format": {"type": "json_schema", "schema": EXPLAIN_SCHEMA}},
-            )
-            body = next(b.text for b in resp.content if b.type == "text")
+            prompt = f"""{EXPLAIN_SYSTEM}
+
+다음 JSON 분석 결과를 바탕으로 설명을 작성해주세요:
+{json.dumps(ctx, ensure_ascii=False, indent=2)}
+
+응답은 다음 JSON 스키마를 정확히 따라야 합니다:
+{json.dumps(EXPLAIN_SCHEMA, ensure_ascii=False)}"""
+            
+            resp = _client().generate_content(prompt)
+            body = resp.text
+            # Gemini 응답에서 JSON 추출
+            if body.startswith("```json"):
+                body = body[7:]
+            if body.startswith("```"):
+                body = body[3:]
+            if body.endswith("```"):
+                body = body[:-3]
+            body = body.strip()
             out = json.loads(body)
-            out["source"] = "claude"
+            out["source"] = "gemini"
             return out
         except Exception as e:
             pass
