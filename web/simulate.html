@@ -72,11 +72,6 @@ async function load() {
           <span class="tag">${esc(s.tag)}</span>
         </div>
         <p>${esc(s.summary)}</p>
-        <div class="stages">
-          <span class="faint" style="font-size:11px">도달 권한</span>
-          ${(s.stages || [s.expected]).map((p, i) =>
-            (i ? '<span class="arrow">›</span>' : '') + stagePill(p)).join('')}
-        </div>
       </button>`).join('');
   } catch (e) {
     document.getElementById('scn-grid').innerHTML = `<div class="notice err">${esc(e.message)}</div>`;

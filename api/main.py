@@ -129,10 +129,11 @@ def post_policy_approve(req: PolicyApproveRequest):
 # ==========================================================================
 @app.get("/api/scenarios")
 def get_scenarios():
-    return {"scenarios": list_scenarios(),
+    policy = active_policy()
+    return {"scenarios": list_scenarios(policy),
             "policy_summary": {
-                "auto_limit": active_policy()["auto_limit"],
-                "daily_limit": active_policy()["daily_limit"],
+                "auto_limit": policy["auto_limit"],
+                "daily_limit": policy["daily_limit"],
             }}
 
 
@@ -143,7 +144,7 @@ def post_simulate(req: SimulateRequest):
 
     engine = get_engine()
     policy = active_policy()
-    scn, actions = build_actions(req.scenario_id)
+    scn, actions = build_actions(req.scenario_id, policy)
 
     history = []
     balance = float(OPENING_BALANCE)
