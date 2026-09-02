@@ -66,8 +66,8 @@ function permCard(r) {
   const ladder = PERM_ORDER.map(x => {
     const on = x === p;
     return `<div class="rung ${on ? 'on' : ''}"
-              style="${on ? `color:${PERM_COLOR[x]}; background:rgba(255,255,255,.04); border-color:${PERM_COLOR[x]}` : ''}">
-              <span style="width:6px;height:6px;border-radius:50%;background:${on ? PERM_COLOR[x] : '#39424e'}"></span>
+              style="${on ? `color:${PERM_COLOR[x]}; background:var(--panel); border-color:${PERM_COLOR[x]}` : ''}">
+              <span style="width:6px;height:6px;border-radius:50%;background:${on ? PERM_COLOR[x] : 'var(--text-faint)'}"></span>
               ${x}<span class="cap">${PERM_CAP[x]}</span>
             </div>`;
   }).join('');
@@ -185,7 +185,7 @@ function timeline(r) {
       <td>${esc(s.recipient_name)}${s.is_new_recipient ? '<span class="newtag">신규</span>' : ''}</td>
       <td class="faint">${esc(s.category_label)}</td>
       <td class="num">${esc(s.amount_text)}</td>
-      <td><span class="risk-cell" style="color:${riskColor(s.scores.total_risk)}; background:rgba(255,255,255,.045)">${s.scores.total_risk.toFixed(0)}</span></td>
+      <td><span class="risk-cell" style="color:${riskColor(s.scores.total_risk)}; background:var(--panel-2)">${s.scores.total_risk.toFixed(0)}</span></td>
       <td>${permBadge(s.permission)}</td>
       <td><span class="oc ${s.outcome}">${
         { EXECUTED: '실행', PENDING_APPROVAL: '승인 대기', BLOCKED: '차단', REJECTED_BY_BANK: '은행 거절' }[s.outcome]
