@@ -103,7 +103,14 @@ POLICY_SYSTEM = """당신은 금융 AI Agent 위임정책 컴파일러입니다.
 - LIMIT_MODIFY, INVEST_ORDER, CARD_ISSUE, RECIPIENT_REGISTER 는 사용자가 명시적으로
   허용했을 때만 allowed_actions 에 넣습니다.
 - "만원"은 10000원, "억"은 100000000원입니다. 금액은 원 단위 정수로 씁니다.
-- time_window 는 사용자가 시간대를 언급했을 때만 채우고, 아니면 둘 다 null 로 둡니다.
+- time_window_start와 time_window_end에는 금지 시간대가 아니라 허용 시간대를 넣습니다.
+- 시간 구간은 시작 시각 이상, 종료 시각 미만으로 해석합니다.
+- 종료 시각 0은 다음 날 자정을 의미합니다.
+- 예: "밤 12시부터 오전 6시까지 하지 마"는
+  time_window_start=6, time_window_end=0으로 변환합니다.
+- 예: "오전 9시부터 오후 6시까지만 허용"은
+  time_window_start=9, time_window_end=18로 변환합니다.
+- 사용자가 시간대를 언급하지 않았다면 둘 다 null로 둡니다.
 - summary_ko 는 사용자에게 그대로 보여줄 한 문장입니다. 존댓말로 씁니다."""
 
 
