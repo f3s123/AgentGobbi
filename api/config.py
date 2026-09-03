@@ -95,5 +95,5 @@ CATEGORY_LABEL = {
 }
 
 # --- 생성형 AI -----------------------------------------------------------
-LLM_MODEL = "gemini-2.0-flash"  # Gemini 모델
+LLM_MODEL = "gemini-3.6-flash"  # Gemini 모델
 LLM_ENABLED = bool(os.environ.get("GOOGLE_API_KEY"))
