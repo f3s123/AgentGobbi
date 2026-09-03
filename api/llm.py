@@ -310,7 +310,8 @@ def sanitize_policy(raw):
     if daily < auto:                      # 논리적으로 일 한도가 건당보다 작을 수 없다
         daily = auto
 
-    nr_action = raw.get("new_recipient_action")
+    raw_new_recipient = raw.get("new_recipient") or {}
+    nr_action = raw.get("new_recipient_action", raw_new_recipient.get("action"))
     if nr_action not in ("AUTO", "VERIFY", "BLOCK"):
         nr_action = "VERIFY"
 
@@ -323,7 +324,9 @@ def sanitize_policy(raw):
     blocked = sorted({c for c in (raw.get("blocked_categories") or [])
                       if c in CATEGORY_ENUM})
 
-    ws, we = raw.get("time_window_start"), raw.get("time_window_end")
+    raw_time_window = raw.get("time_window") or {}
+    ws = raw.get("time_window_start", raw_time_window.get("start"))
+    we = raw.get("time_window_end", raw_time_window.get("end"))
     window = None
     if isinstance(ws, int) and isinstance(we, int) and 0 <= ws <= 23 and 0 <= we <= 23 and ws != we:
         window = {"start": ws, "end": we}
@@ -334,7 +337,8 @@ def sanitize_policy(raw):
         "daily_limit": daily,
         "new_recipient": {
             "action": nr_action,
-            "amount_threshold": clamp_int(raw.get("new_recipient_threshold"),
+            "amount_threshold": clamp_int(raw.get("new_recipient_threshold",
+                                                  raw_new_recipient.get("amount_threshold")),
                                           0, 100_000_000, 0),
         },
         "allowed_actions": actions,

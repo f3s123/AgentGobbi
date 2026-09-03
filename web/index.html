@@ -41,8 +41,8 @@
     <div class="policy-list" id="policy-rows"></div>
     <div id="assumptions" style="margin-top:14px"></div>
     <div class="btn-row" style="margin-top:18px">
+      <button class="btn" id="btn-toggle-edit">세부 항목 수정</button>
       <button class="btn primary" id="btn-approve">이 내용으로 승인</button>
-      <button class="btn" id="btn-cancel">다시 작성</button>
     </div>
   </div>
 
@@ -64,6 +64,27 @@ const EXAMPLES = [
 ];
 
 let pending = null;
+let editOpen = false;
+
+const ACTION_OPTIONS = [
+  ['BALANCE_READ', '잔액 조회'],
+  ['HISTORY_READ', '거래내역 조회'],
+  ['TRANSFER', '송금 실행'],
+  ['PAYMENT', '결제 실행'],
+  ['RECIPIENT_REGISTER', '수취인 등록'],
+  ['LIMIT_MODIFY', '한도 변경'],
+  ['INVEST_ORDER', '투자 주문'],
+  ['CARD_ISSUE', '카드 발급']
+];
+const CATEGORY_OPTIONS = [
+  ['OVERSEAS_REMIT', '해외송금'],
+  ['CRYPTO', '가상자산'],
+  ['GAMBLING', '사행성'],
+  ['GIFT_CARD', '상품권'],
+  ['PREPAID_CHARGE', '선불충전'],
+  ['SECURITIES', '증권'],
+  ['ENTERTAIN', '유흥']
+];
 
 document.getElementById('examples').innerHTML =
   EXAMPLES.map((e, i) => `<button class="chip" data-i="${i}">${esc(e)}</button>`).join('');
@@ -94,6 +115,156 @@ async function loadActive() {
   }
 }
 
+function checkedList(name) {
+  return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(el => el.value);
+}
+
+function renderEditablePolicyRows(policy) {
+  const nr = policy.new_recipient || {};
+  const tw = policy.time_window || {};
+  const allowed = new Set(policy.allowed_actions || []);
+  const blocked = new Set(policy.blocked_categories || []);
+  const hasWindow = Number.isInteger(tw.start) && Number.isInteger(tw.end);
+
+  return `
+    <div class="policy-row editing">
+      <dt>등록 수취인 자동송금 한도</dt>
+      <dd><input class="policy-control" type="number" min="0" step="10000" id="edit-auto-limit" value="${Number(policy.auto_limit || 0)}">
+        <span class="hint">건당 이 금액까지는 승인 없이 실행합니다.</span></dd>
+    </div>
+    <div class="policy-row editing">
+      <dt>1일 누적 한도</dt>
+      <dd><input class="policy-control" type="number" min="0" step="10000" id="edit-daily-limit" value="${Number(policy.daily_limit || 0)}">
+        <span class="hint">24시간 누적 거래금액이 이 값을 넘으면 승인을 요구합니다.</span></dd>
+    </div>
+    <div class="policy-row editing">
+      <dt>신규 수취인</dt>
+      <dd><div class="inline-controls">
+          <select id="edit-new-recipient-action">
+            <option value="AUTO" ${nr.action === 'AUTO' ? 'selected' : ''}>자동 실행 허용</option>
+            <option value="VERIFY" ${nr.action === 'VERIFY' ? 'selected' : ''}>본인 승인 필요</option>
+            <option value="BLOCK" ${nr.action === 'BLOCK' ? 'selected' : ''}>송금 차단</option>
+          </select>
+          <input class="policy-control" type="number" min="0" step="10000" id="edit-new-recipient-threshold" value="${Number(nr.amount_threshold || 0)}" aria-label="신규 수취인 승인 기준 금액">
+        </div><span class="hint">처음 보는 계좌나 가맹점에 대한 처리 방식입니다. 오른쪽 금액은 승인 기준입니다.</span></dd>
+    </div>
+    <div class="policy-row editing">
+      <dt>위임할 금융행위</dt>
+      <dd><div class="check-grid inline">
+        ${ACTION_OPTIONS.map(([value, label]) => `
+          <label class="check-item"><input type="checkbox" name="edit-actions" value="${value}" ${allowed.has(value) ? 'checked' : ''}> ${label}</label>
+        `).join('')}
+      </div><span class="hint">목록에 없는 기능을 호출하면 즉시 권한을 회수합니다.</span></dd>
+    </div>
+    <div class="policy-row editing">
+      <dt>차단 거래 유형</dt>
+      <dd><div class="check-grid inline">
+        ${CATEGORY_OPTIONS.map(([value, label]) => `
+          <label class="check-item"><input type="checkbox" name="edit-blocked" value="${value}" ${blocked.has(value) ? 'checked' : ''}> ${label}</label>
+        `).join('')}
+      </div><span class="hint">선택한 유형의 거래는 실행하지 않습니다.</span></dd>
+    </div>
+    <div class="policy-row editing">
+      <dt>허용 시간대</dt>
+      <dd><div class="inline-controls">
+        <select id="edit-time-mode">
+            <option value="all" ${hasWindow ? '' : 'selected'}>24시간</option>
+            <option value="custom" ${hasWindow ? 'selected' : ''}>직접 지정</option>
+        </select>
+        <input class="policy-control hour" type="number" min="0" max="23" step="1" id="edit-time-start" value="${hasWindow ? tw.start : 9}" aria-label="시작 시간">
+        <input class="policy-control hour" type="number" min="0" max="23" step="1" id="edit-time-end" value="${hasWindow ? tw.end : 18}" aria-label="종료 시간">
+      </div><span class="hint">시간대 밖의 거래는 위험도에 가중됩니다.</span></dd>
+    </div>
+    <div class="policy-row editing">
+      <dt>위임 유효기간</dt>
+      <dd><input class="policy-control" type="number" min="1" max="365" step="1" id="edit-valid-days" value="${Number(policy.valid_days || 30)}">
+        <span class="hint">기간이 지나면 권한이 자동 회수됩니다.</span></dd>
+    </div>
+    <div class="policy-row editing">
+      <dt>추가 승인 주체</dt>
+      <dd><select id="edit-verify-channel">
+          <option value="SELF" ${policy.verify_channel === 'SELF' ? 'selected' : ''}>본인</option>
+          <option value="TRUSTED_PERSON" ${policy.verify_channel === 'TRUSTED_PERSON' ? 'selected' : ''}>지정 신뢰인</option>
+        </select><span class="hint">VERIFY 단계에서 승인을 요청할 대상입니다.</span></dd>
+    </div>
+    <div class="policy-row editing">
+      <dt>이상행동 발생 시</dt>
+      <dd><select id="edit-on-anomaly">
+          <option value="REDUCE_PERMISSION" ${policy.on_anomaly === 'REDUCE_PERMISSION' ? 'selected' : ''}>권한 자동 축소</option>
+          <option value="NOTIFY_ONLY" ${policy.on_anomaly === 'NOTIFY_ONLY' ? 'selected' : ''}>알림만 발송</option>
+        </select><span class="hint">축소된 권한의 복원에는 반드시 본인 승인이 필요합니다.</span></dd>
+    </div>`;
+}
+
+function bindEditablePolicyRows() {
+  const timeMode = document.getElementById('edit-time-mode');
+  const syncTimeFields = () => {
+    const custom = timeMode.value === 'custom';
+    document.getElementById('edit-time-start').disabled = !custom;
+    document.getElementById('edit-time-end').disabled = !custom;
+  };
+  timeMode.addEventListener('change', syncTimeFields);
+  syncTimeFields();
+}
+
+function readPolicyEditor() {
+  const edited = { ...pending };
+  edited.auto_limit = Number(document.getElementById('edit-auto-limit').value || 0);
+  edited.daily_limit = Number(document.getElementById('edit-daily-limit').value || 0);
+  edited.new_recipient = {
+    action: document.getElementById('edit-new-recipient-action').value,
+    amount_threshold: Number(document.getElementById('edit-new-recipient-threshold').value || 0)
+  };
+  edited.allowed_actions = checkedList('edit-actions');
+  edited.blocked_categories = checkedList('edit-blocked');
+  edited.valid_days = Number(document.getElementById('edit-valid-days').value || 30);
+  edited.verify_channel = document.getElementById('edit-verify-channel').value;
+  edited.on_anomaly = document.getElementById('edit-on-anomaly').value;
+  edited.summary_ko = '';
+  edited.assumptions = [];
+  if (document.getElementById('edit-time-mode').value === 'custom') {
+    edited.time_window = {
+      start: Number(document.getElementById('edit-time-start').value || 0),
+      end: Number(document.getElementById('edit-time-end').value || 0)
+    };
+  } else {
+    edited.time_window = null;
+  }
+  return edited;
+}
+
+function renderPolicyPreview(policy, display) {
+  pending = policy;
+  document.getElementById('summary').textContent = policy.summary_ko;
+  document.getElementById('policy-rows').innerHTML = editOpen
+    ? renderEditablePolicyRows(policy)
+    : policyRows(display);
+  document.getElementById('btn-toggle-edit').textContent = editOpen ? '수정 내용 반영' : '세부 항목 수정';
+  document.getElementById('btn-approve').style.display = editOpen ? 'none' : '';
+  document.getElementById('assumptions').innerHTML = (policy.assumptions || []).length
+    ? `<div class="notice"><b>말씀하지 않으신 부분은 이렇게 채웠습니다</b>
+         <ul>${policy.assumptions.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div>`
+    : '';
+  if (editOpen) bindEditablePolicyRows();
+}
+
+async function applyPolicyEdit() {
+  const errEl = document.getElementById('compile-err');
+  errEl.innerHTML = '';
+  const btn = document.getElementById('btn-toggle-edit');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 반영 중';
+  try {
+    const r = await API.post('/api/policy/preview', { policy: readPolicyEditor() });
+    editOpen = false;
+    renderPolicyPreview(r.policy, r.display);
+    errEl.innerHTML = '<div class="notice ok">수정한 항목을 다시 정리했습니다. 확인 후 승인해 주세요.</div>';
+  } catch (e) {
+    errEl.innerHTML = `<div class="notice err">${esc(e.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = editOpen ? '수정 내용 반영' : '세부 항목 수정';
+  }
+}
+
 document.getElementById('btn-compile').addEventListener('click', async () => {
   const text = document.getElementById('input').value.trim();
   const errEl = document.getElementById('compile-err');
@@ -104,13 +275,8 @@ document.getElementById('btn-compile').addEventListener('click', async () => {
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 변환 중';
   try {
     const r = await API.post('/api/policy/compile', { text });
-    pending = r.policy;
-    document.getElementById('summary').textContent = r.policy.summary_ko;
-    document.getElementById('policy-rows').innerHTML = policyRows(r.display);
-    document.getElementById('assumptions').innerHTML = (r.policy.assumptions || []).length
-      ? `<div class="notice"><b>말씀하지 않으신 부분은 이렇게 채웠습니다</b>
-           <ul>${r.policy.assumptions.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div>`
-      : '';
+    editOpen = false;
+    renderPolicyPreview(r.policy, r.display);
     document.getElementById('preview').style.display = '';
     document.getElementById('preview').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch (e) {
@@ -118,6 +284,16 @@ document.getElementById('btn-compile').addEventListener('click', async () => {
   } finally {
     btn.disabled = false; btn.textContent = '정책으로 변환';
   }
+});
+
+document.getElementById('btn-toggle-edit').addEventListener('click', () => {
+  if (!pending) return;
+  if (editOpen) {
+    applyPolicyEdit();
+    return;
+  }
+  editOpen = true;
+  renderPolicyPreview(pending, []);
 });
 
 document.getElementById('btn-approve').addEventListener('click', async () => {
@@ -128,6 +304,7 @@ document.getElementById('btn-approve').addEventListener('click', async () => {
     await API.post('/api/policy/approve', { policy: pending });
     document.getElementById('preview').style.display = 'none';
     document.getElementById('input').value = '';
+    editOpen = false;
     pending = null;
     await loadActive();
     document.getElementById('compile-err').innerHTML =
@@ -137,11 +314,6 @@ document.getElementById('btn-approve').addEventListener('click', async () => {
   } finally {
     btn.disabled = false; btn.textContent = '이 내용으로 승인';
   }
-});
-
-document.getElementById('btn-cancel').addEventListener('click', () => {
-  document.getElementById('preview').style.display = 'none';
-  pending = null;
 });
 
 loadStatus();

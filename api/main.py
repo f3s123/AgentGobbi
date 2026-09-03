@@ -115,6 +115,18 @@ def post_policy_compile(req: PolicyCompileRequest):
             "llm": llm_status()}
 
 
+@app.post("/api/policy/preview")
+def post_policy_preview(req: PolicyApproveRequest):
+    """사용자가 수정한 Policy를 서버 기준으로 정리한 뒤 미리보기만 반환한다."""
+    policy = sanitize_policy(req.policy)
+    policy["valid_until"] = (datetime.now()
+                             + timedelta(days=policy["valid_days"])).isoformat()
+    policy["source"] = req.policy.get("source", "user-edited")
+    policy["input_text"] = req.policy.get("input_text", "")
+    return {"policy": policy, "display": policy_display(policy),
+            "llm": llm_status()}
+
+
 @app.post("/api/policy/approve")
 def post_policy_approve(req: PolicyApproveRequest):
     """사용자가 변환 결과를 확인한 뒤 최종 승인한다."""

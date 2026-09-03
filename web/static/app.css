@@ -92,14 +92,17 @@ a { color: inherit; text-decoration: none; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 /* ---------- 폼 ---------- */
-textarea, input[type=text] {
+textarea, input[type=text], input[type=number], select {
   width: 100%; background: var(--bg); color: var(--text);
   border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 14px 15px; font-family: inherit; font-size: 15px; line-height: 1.7;
-  resize: vertical; outline: none; transition: border-color .15s;
+  outline: none; transition: border-color .15s;
 }
-textarea:focus, input:focus { border-color: var(--accent); }
+textarea { resize: vertical; }
+textarea:focus, input:focus, select:focus { border-color: var(--accent); }
 textarea::placeholder { color: var(--text-faint); }
+select { appearance: none; min-height: 49px; }
+input:disabled { color: var(--text-faint); background: #eef1f5; cursor: not-allowed; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -145,6 +148,18 @@ textarea::placeholder { color: var(--text-faint); }
 .policy-row dd { margin: 0; font-weight: 600; }
 .policy-row dd .hint { display: block; font-weight: 400; font-size: 12.5px;
                        color: var(--text-faint); margin-top: 3px; }
+.policy-row.editing { align-items: start; }
+.policy-row.editing dd { font-weight: 400; }
+.policy-control, .policy-row select { max-width: 260px; min-height: 40px; padding: 8px 10px; font-size: 14px; }
+.policy-control.hour { max-width: 88px; }
+.inline-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 7px; }
+.check-item {
+  display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 9px 11px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+  color: var(--text); font-weight: 500;
+}
+.check-item input { width: 16px; height: 16px; accent-color: var(--accent); }
 
 .notice {
   padding: 12px 15px; border-radius: var(--radius-sm); font-size: 13.5px;
@@ -276,4 +291,6 @@ table.tl td.num { text-align: right; font-variant-numeric: tabular-nums; font-fa
   .grid-2 { grid-template-columns: 1fr; }
   .factors { grid-template-columns: 1fr; }
   .policy-row { grid-template-columns: 1fr; gap: 2px; }
+  .check-grid { grid-template-columns: 1fr; }
+  .policy-control, .policy-row select { max-width: 100%; }
 }
