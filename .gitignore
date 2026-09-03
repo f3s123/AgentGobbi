@@ -5,5 +5,6 @@ env/
 .venv-1/
 venv-1/
 __pycache__/
+api/__pycache__/
 *.pyc
 .env

@@ -33,7 +33,7 @@ NAVER = _known("네이버페이")
 CVS = _known("세븐일레븐")
 TRANSIT = _known("NH 후불교통")
 RENT = _known("월세")
-FRIEND = _known("이재윤")
+FRIEND = _known("홍길동")
 
 
 def _a(offset, amount, recipient, category, action_type, tool,
