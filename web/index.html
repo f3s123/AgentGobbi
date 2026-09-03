@@ -92,16 +92,6 @@ document.getElementById('examples').addEventListener('click', ev => {
   if (b) document.getElementById('input').value = EXAMPLES[+b.dataset.i];
 });
 
-<!--
-async function loadStatus() {
-  try {
-    const h = await API.get('/api/health');
-    document.getElementById('llm-mode').textContent =
-      h.llm.enabled ? ('생성형 AI: ' + h.llm.model) : '생성형 AI: 규칙 기반 모드 (API 키 미설정)';
-  } catch (e) { /* 무시 */ }
-}
--->
-
 async function loadActive() {
   const el = document.getElementById('active-body');
   try {
@@ -278,19 +268,12 @@ document.getElementById('btn-compile').addEventListener('click', async () => {
     const r = await API.post('/api/policy/compile', { text });
     editOpen = false;
     renderPolicyPreview(r.policy, r.display);
-    pending = r.policy;
-    document.getElementById('summary').textContent = r.policy.summary_ko;
-    document.getElementById('policy-rows').innerHTML = policyRows(r.display);
-    document.getElementById('assumptions').innerHTML = (r.policy.assumptions || []).length
-      ? `<div class="notice"><b>말씀하지 않으신 부분은 이렇게 채웠어요</b>
-           <ul>${r.policy.assumptions.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div>`
-      : '';
     document.getElementById('preview').style.display = '';
     document.getElementById('preview').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch (e) {
     errEl.innerHTML = `<div class="notice err">${esc(e.message)}</div>`;
   } finally {
-    btn.disabled = false; btn.textContent = '정책으로 변환';
+    btn.disabled = false; btn.textContent = '입력';
   }
 });
 
@@ -322,11 +305,6 @@ document.getElementById('btn-approve').addEventListener('click', async () => {
   } finally {
     btn.disabled = false; btn.textContent = '이 내용으로 승인';
   }
-});
-
-document.getElementById('btn-cancel').addEventListener('click', () => {
-  document.getElementById('preview').style.display = 'none';
-  pending = null;
 });
 
 loadActive();
