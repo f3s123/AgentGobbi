@@ -20,13 +20,13 @@
 <main class="wrap">
   <div class="page-head">
     <h1>AI Agent에게 무엇을, 어디까지 맡길지 정하세요</h1>
-    <p>원하는 송금 조건을 입력해주세요.
-       변환된 결과를 확인하고 승인하면 해당 정책이 적용됩니다.</p>
+    <p>AI Agent에게 맡길 범위와 조건을 입력해주세요.
+      변환된 정책을 확인·수정한 뒤 승인하면 적용됩니다.</p>
   </div>
 
   <div class="panel">
-    <h2 class="panel-title"><span class="num">1</span> 위임 정책 설정</h2>
-    <textarea id="input" rows="4" placeholder="예) 기존 거래처에는 50만원까지 알아서 보내고, 처음 보는 계좌면 나한테 물어봐."></textarea>
+    <h2 class="panel-title"> 위임 정책 설정</h2>
+    <textarea id="input" rows="4" placeholder="위임 정책을 입력하세요.&#10;※허용 시간대 설정시 정확한 시간을 입력해주세요."></textarea>
     <div class="chips" id="examples"></div>
     <div class="btn-row" style="margin-top:16px">
       <button class="btn primary" id="btn-compile">입력</button>
@@ -35,7 +35,7 @@
   </div>
 
   <div class="panel" id="preview" style="display:none">
-    <h2 class="panel-title"><span class="num">2</span> 위임 정책 확인</h2>
+    <h2 class="panel-title"> 위임 정책 확인</h2>
     <p class="muted small" id="summary" style="margin:-6px 0 16px"></p>
     <div class="policy-list" id="policy-rows"></div>
     <div id="assumptions" style="margin-top:14px"></div>
@@ -46,7 +46,7 @@
   </div>
 
   <div class="panel" id="active">
-    <h2 class="panel-title"><span class="num">3</span> 현재 적용 중인 위임 정책</h2>
+    <h2 class="panel-title"> 현재 적용 중인 위임 정책</h2>
     <div id="active-body"></div>
   </div>
 </main>
@@ -59,7 +59,7 @@ const EXAMPLES = [
   '기존 거래처에는 50만원까지 알아서 보내고, 처음 보는 계좌면 나한테 물어봐.',
   '건당 30만원까지만 자동으로 결제하고, 하루 100만원 넘으면 확인해줘.',
   '해외송금이랑 상품권 결제는 절대 하지 마. 나머지는 20만원까지 알아서 해.',
-  '밤에는 아무것도 하지 말고, 낮에만 40만원까지 자동으로 보내줘. 2주만 맡길게.'
+  '오전 9시부터 오후 6시까지만 최대 40만원까지 자동으로 보내줘. 2주만 맡길게.'
 ];
 
 let pending = null;
