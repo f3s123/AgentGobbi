@@ -39,7 +39,7 @@ function topSummary(r) {
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap">
           ${permBadge(p)}
           <span class="tag" style="font-size:11px; color:var(--text-faint); font-family:var(--mono);
-                border:1px solid var(--line); padding:2px 8px; border-radius:999px">${esc(r.scenario.tag)}</span>
+                border:1px solid var(--line); padding:2px 8px; border-radius:999px">${esc(r.scenario.title)}</span>
           <span class="faint small">${esc(st.start_time)} ~ ${esc(st.end_time)}</span>
         </div>
         <h2>${esc(e.headline || r.scenario.title)}</h2>
