@@ -380,7 +380,7 @@ def _unauthorized_tool(policy=None):
 SCENARIOS = [
     {
         "id": "normal_daily",
-        "title": "평상시 하루",
+        "title": "평상시",
         "tag": "정상",
         "summary": "AI Agent가 평소 패턴대로 교통비·간편결제·지인 정산을 처리합니다.",
         "detail": "등록된 수취인, 평소 금액대, 평소 시간대. 위임 범위를 벗어나지 않습니다.",

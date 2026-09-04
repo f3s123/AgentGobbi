@@ -119,8 +119,7 @@ function scoreCard(r) {
     <div class="meter-scale"><span>0 AUTO</span><span>30 VERIFY</span><span>55 READ</span><span>78 STOP</span></div>
     <div class="sub-scores">${sub}</div>
     <p class="faint small" style="margin:14px 0 0; line-height:1.5">
-      세 점수를 0.5 : 0.3 : 0.2 로 합산한 값입니다.
-      최고 위험 시점(#${r.stats.peak_seq}번째 행동) 기준으로 표시합니다.</p>
+      최고 위험 시점(#${r.stats.peak_seq}번째 행동) 기준</p>
   </section>`;
 }
 
@@ -169,9 +168,6 @@ function explainCard(r) {
     <h3 style="font-size:14px; margin:24px 0 10px">분석 항목 8가지</h3>
     <div class="factors">${factors}</div>
     ${events}
-    <p class="faint small" style="margin:18px 0 0">
-      설명 생성: ${r.llm.enabled ? esc(r.llm.model) : '규칙 기반 모드'}
-      · 수치는 모두 탐지 엔진이 계산한 값입니다.</p>
   </section>`;
 }
 
