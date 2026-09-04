@@ -11,7 +11,7 @@
 import json
 from datetime import datetime, timedelta
 
-from config import DATA_DIR
+from config import ACTION_TO_TOOL, CATEGORY_LABEL, DATA_DIR, TOOL_LABEL
 
 _BASELINE = json.loads((DATA_DIR / "user_baseline.json").read_text(encoding="utf-8"))
 _KNOWN = _BASELINE["known_recipients"]
@@ -68,6 +68,42 @@ def _normal_daily(policy=None):
            memo="지인 정산"),
     ]
 
+
+def _normal_large_transfer(policy=None):
+    """고액이지만 기존 수취인과 정상 맥락을 가진 이체."""
+    auto_limit, _ = _policy_limits(policy)
+    rent_amount = max(600_000, _near_limit_amount(auto_limit, 1.35))
+    return [
+        _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
+           memo="잔액 확인"),
+        _a(240, 8_700, CVS, "CONVENIENCE", "PAYMENT", "payment.execute",
+           memo="편의점"),
+        _a(3_600, rent_amount, RENT, "RENT", "TRANSFER", "transfer.execute",
+           memo="월세 정기 이체"),
+        _a(8_400, 18_900, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
+           memo="저녁 결제"),
+    ]
+
+
+def _payday_burst(policy=None):
+    """월급날 거래량은 늘지만 익숙한 수취인 중심으로 처리되는 정상 흐름."""
+    auto_limit, _ = _policy_limits(policy)
+    save_amount = min(_near_limit_amount(auto_limit, 0.70), 350_000)
+    return [
+        _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
+           memo="월급 입금 후 잔액 확인"),
+        _a(300, 120_000, TRANSIT, "TRANSPORT", "PAYMENT", "payment.execute",
+           memo="교통비 정산"),
+        _a(1_200, 89_000, NAVER, "SHOPPING", "PAYMENT", "payment.execute",
+           memo="생필품 구매"),
+        _a(2_400, save_amount, RENT, "SAVINGS", "TRANSFER", "transfer.execute",
+           memo="정기 저축 이체"),
+        _a(3_900, 42_000, FRIEND, "P2P", "TRANSFER", "transfer.execute",
+           memo="지인 정산"),
+        _a(5_400, 19_800, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
+           memo="간편결제"),
+    ]
+
 #---------------------------------------------------------------------------
 '''
 기존 코드
@@ -109,6 +145,90 @@ def _won_short(amount):
     if amount >= 10_000 and amount % 10_000 == 0:
         return "%d만원" % (amount // 10_000)
     return "%s원" % format(amount, ",")
+
+
+def _is_hour_allowed(hour, policy):
+    tw = (policy or {}).get("time_window")
+    if not tw or tw.get("start") is None or tw.get("end") is None:
+        return True
+    start, end = int(tw["start"]), int(tw["end"])
+    return (start <= hour < end) if start < end else (hour >= start or hour < end)
+
+
+def _outside_policy_hour(policy, fallback=2):
+    if not (policy or {}).get("time_window"):
+        return fallback
+    if not _is_hour_allowed(fallback, policy):
+        return fallback
+    for hour in (2, 23, 0, 6, 19, 8, 12):
+        if not _is_hour_allowed(hour, policy):
+            return hour
+    return fallback
+
+
+def _scenario_start_hour(scenario_id, policy, default):
+    if scenario_id in ("recipient_burst_night", "account_drain", "unauthorized_tool"):
+        return _outside_policy_hour(policy, default)
+    return default
+
+
+_DANGEROUS_ACTIONS = ["LIMIT_MODIFY", "INVEST_ORDER", "CARD_ISSUE", "RECIPIENT_REGISTER"]
+_ACTION_MEMO = {
+    "LIMIT_MODIFY": "이체한도 상향 시도",
+    "INVEST_ORDER": "위임 범위 밖 투자 주문 시도",
+    "CARD_ISSUE": "위임 범위 밖 카드 발급 시도",
+    "RECIPIENT_REGISTER": "위임 범위 밖 수취인 등록 시도",
+}
+_ACTION_CATEGORY = {
+    "LIMIT_MODIFY": "ETC",
+    "INVEST_ORDER": "SECURITIES",
+    "CARD_ISSUE": "ETC",
+    "RECIPIENT_REGISTER": "P2P",
+}
+
+
+def _unauthorized_action(policy):
+    allowed = set((policy or {}).get("allowed_actions") or [])
+    for action in _DANGEROUS_ACTIONS:
+        if action not in allowed:
+            return action
+    return "LIMIT_MODIFY"
+
+
+_BLOCKED_CATEGORY_PLAN = {
+    "GIFT_CARD": ("PAYMENT", "payment.execute", "상품권 결제 시도", 1.00, "GC"),
+    "OVERSEAS_REMIT": ("TRANSFER", "transfer.execute", "해외 송금 시도", 2.40, "OS"),
+    "CRYPTO": ("PAYMENT", "payment.execute", "가상자산 결제 시도", 1.20, "CR"),
+    "GAMBLING": ("PAYMENT", "payment.execute", "사행성 결제 시도", 0.90, "GB"),
+    "PREPAID_CHARGE": ("PAYMENT", "payment.execute", "선불충전 시도", 0.95, "PC"),
+    "SECURITIES": ("INVEST_ORDER", "invest.order", "증권 투자 주문 시도", 1.10, "ST"),
+    "ENTERTAIN": ("PAYMENT", "payment.execute", "유흥 결제 시도", 0.85, "EN"),
+}
+
+
+def _blocked_category_actions(policy, auto_limit):
+    blocked = [c for c in ((policy or {}).get("blocked_categories") or [])
+               if c in _BLOCKED_CATEGORY_PLAN]
+    if not blocked:
+        blocked = ["GIFT_CARD", "OVERSEAS_REMIT"]
+
+    actions = []
+    for i, category in enumerate(blocked[:2]):
+        action_type, tool, memo, ratio, tag = _BLOCKED_CATEGORY_PLAN[category]
+        actions.append(_a(560 + i * 200, _near_limit_amount(auto_limit, ratio),
+                          _new(tag), category, action_type, tool, memo=memo))
+    return actions
+
+
+def _category_text(categories):
+    if not categories:
+        return "상품권 결제와 해외송금"
+    labels = [CATEGORY_LABEL.get(c, c) for c in categories[:2]]
+    return "와 ".join(labels) if len(labels) == 2 else labels[0] + " 거래"
+
+
+def _action_text(action):
+    return TOOL_LABEL.get(ACTION_TO_TOOL.get(action), action)
 
 
 def _limit_ratcheting(policy):
@@ -240,18 +360,20 @@ def _account_drain(policy=None):
 def _unauthorized_tool(policy=None):
     """웹 프롬프트 인젝션으로 위임하지 않은 기능까지 호출 (Unit42 관측 유형)."""
     auto_limit, _ = _policy_limits(policy)
-    return [
+    action = _unauthorized_action(policy)
+    tool = ACTION_TO_TOOL[action]
+    acts = [
         _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
            memo="잔액 조회"),
         _a(180, 47_000, NAVER, "SIMPLE_PAY", "PAYMENT", "payment.execute",
            memo="정상 결제로 시작"),
-        _a(420, 0, KAKAO, "ETC", "LIMIT_MODIFY", "limit.modify",
-           memo="이체한도 상향 시도"),
-        _a(560, _near_limit_amount(auto_limit, 1.000), _new("GC"), "GIFT_CARD", "PAYMENT", "payment.execute",
-           memo="상품권 대량 결제"),
-        _a(760, _near_limit_amount(auto_limit, 2.400), _new("OS"), "OVERSEAS_REMIT", "TRANSFER",
-           "transfer.execute", memo="해외 송금 시도"),
+        _a(420, 0 if action in ("LIMIT_MODIFY", "RECIPIENT_REGISTER", "CARD_ISSUE")
+           else _near_limit_amount(auto_limit, 0.80),
+           KAKAO, _ACTION_CATEGORY[action], action, tool,
+           memo=_ACTION_MEMO[action]),
     ]
+    acts.extend(_blocked_category_actions(policy, auto_limit))
+    return acts
 
 
 # --------------------------------------------------------------------------
@@ -263,6 +385,22 @@ SCENARIOS = [
         "summary": "AI Agent가 평소 패턴대로 교통비·간편결제·지인 정산을 처리합니다.",
         "detail": "등록된 수취인, 평소 금액대, 평소 시간대. 위임 범위를 벗어나지 않습니다.",
         "start_hour": 8, "builder": _normal_daily,
+    },
+    {
+        "id": "normal_large_transfer",
+        "title": "정상 고액 이체",
+        "tag": "정상 고액",
+        "summary": "금액은 크지만 기존 수취인에게 월세처럼 익숙한 맥락으로 이체합니다.",
+        "detail": "고액이라는 이유만으로 차단하지 않고, 수취인·카테고리·반복 맥락을 함께 봅니다.",
+        "start_hour": 11, "builder": _normal_large_transfer,
+    },
+    {
+        "id": "payday_burst",
+        "title": "월급날 거래 증가",
+        "tag": "정상 다건",
+        "summary": "월급날 여러 거래가 몰리지만 기존 수취인과 일상 카테고리 중심으로 처리됩니다.",
+        "detail": "짧은 시간 안에 거래가 늘어도 익숙한 수취인·카테고리라면 위험 판단이 달라질 수 있습니다.",
+        "start_hour": 9, "builder": _payday_burst,
     },
     {
         "id": "limit_ratcheting",
@@ -322,18 +460,35 @@ def list_scenarios(policy=None):
     auto_limit, daily_limit = _policy_limits(policy)
     for s in SCENARIOS:
         item = {k: v for k, v in s.items() if k != "builder"}
+        start_hour = _scenario_start_hour(s["id"], policy, s["start_hour"])
         if s["id"] == "limit_ratcheting":
             item["summary"] = "건당 자동실행 한도 직전 금액(%s 안팎)을 서로 다른 신규 계좌로 반복 송금합니다." % _won_short(auto_limit * 0.98)
+        elif s["id"] == "normal_large_transfer":
+            item["summary"] = "자동실행 한도보다 큰 %s 월세 이체처럼 고액이지만 익숙한 정상 거래를 확인합니다." % _won_short(max(600_000, auto_limit * 1.35))
+        elif s["id"] == "payday_burst":
+            item["summary"] = "월급날 거래량이 늘지만 기존 수취인과 일상 카테고리 중심의 정상 흐름을 확인합니다."
         elif s["id"] == "recipient_burst_night":
-            item["summary"] = "새벽 시간대에 자동실행 한도의 31~64%% 금액을 처음 보는 계좌 7곳으로 짧은 간격 연속 송금합니다."
+            if policy and not _is_hour_allowed(start_hour, policy):
+                item["summary"] = "허용 시간대 밖인 %02d시에 자동실행 한도의 31~64%% 금액을 신규 계좌 7곳으로 연속 송금합니다." % start_hour
+            else:
+                item["summary"] = "시간대는 허용 범위지만 자동실행 한도의 31~64% 금액을 신규 계좌 7곳으로 짧은 간격 송금합니다."
         elif s["id"] == "cumulative_bypass":
             item["summary"] = "건당 한도 이내 결제를 반복해 24시간 누적 한도 %s를 넘깁니다." % _won_short(daily_limit)
         elif s["id"] == "retry_probing":
             item["summary"] = "자동실행 한도 %s 경계에서 실패하자 금액을 조금씩 낮추며 같은 계좌로 반복 시도합니다." % _won_short(auto_limit)
         elif s["id"] == "account_drain":
-            item["summary"] = "조회로 잔액을 확인한 뒤 한도 직전 송금과 큰 금액 송금으로 잔액 전체 이전을 시도합니다."
+            if policy and not _is_hour_allowed(start_hour, policy):
+                item["summary"] = "허용 시간대 밖인 %02d시에 잔액 조회 후 한도 직전 송금과 큰 금액 송금으로 잔액 이전을 시도합니다." % start_hour
+            else:
+                item["summary"] = "조회로 잔액을 확인한 뒤 한도 직전 송금과 큰 금액 송금으로 잔액 전체 이전을 시도합니다."
         elif s["id"] == "unauthorized_tool":
-            item["summary"] = "이체한도 변경을 시도한 뒤 자동실행 한도 기준 상품권 결제와 해외송금으로 이어집니다."
+            action = _unauthorized_action(policy)
+            blocked = [c for c in ((policy or {}).get("blocked_categories") or [])
+                       if c in _BLOCKED_CATEGORY_PLAN]
+            item["summary"] = "%s 기능을 호출한 뒤 %s 시도로 이어집니다." % (
+                _action_text(action), _category_text(blocked))
+            if policy and not _is_hour_allowed(start_hour, policy):
+                item["summary"] = "허용 시간대 밖인 %02d시에 " % start_hour + item["summary"]
         out.append(item)
     return out
 
@@ -342,7 +497,8 @@ def build_actions(scenario_id, policy=None, base_date=None):
     """시나리오 -> 절대 시각이 매겨진 Agent 행동 리스트."""
     scn = SCENARIO_MAP[scenario_id]
     base = base_date or datetime.now()
-    start = base.replace(hour=scn["start_hour"], minute=5, second=0, microsecond=0)
+    start_hour = _scenario_start_hour(scenario_id, policy, scn["start_hour"])
+    start = base.replace(hour=start_hour, minute=5, second=0, microsecond=0)
 
     actions = []
     for i, a in enumerate(scn["builder"](policy)):
