@@ -62,7 +62,10 @@ a { color: inherit; text-decoration: none; }
 
 .page-head { margin-bottom: 26px; }
 .page-head h1 { margin: 0 0 8px; font-size: 25px; letter-spacing: -.02em; }
-.page-head p { margin: 0; color: var(--text-dim); font-size: 14.5px; max-width: 74ch; }
+.page-head p {
+  margin: 0; color: var(--text-dim); font-size: 14.5px;
+  width: 100%; max-width: none;
+}
 
 /* ---------- 패널 ---------- */
 .panel {
@@ -193,7 +196,10 @@ input:disabled { color: var(--text-faint); background: #eef1f5; cursor: not-allo
 
 .summary-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 .summary-head h2 { margin: 0 0 6px; font-size: 21px; letter-spacing: -.02em; }
-.summary-head .lead { margin: 0; color: var(--text-dim); font-size: 14.5px; max-width: 78ch; }
+.summary-head .lead {
+  margin: 0; color: var(--text-dim); font-size: 14.5px;
+  width: 100%; max-width: none;
+}
 
 .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
             gap: 1px; margin-top: 18px; background: var(--line-soft);
