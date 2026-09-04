@@ -157,21 +157,68 @@ def compile_policy(text):
 
 
 # --- 규칙 기반 파서 -------------------------------------------------------
-_NUM = r"([0-9][0-9,\.]*)\s*(억|만)?\s*원?"
+# 금액 단위가 없는 숫자는 시간(9시)이나 기간(2주)일 수 있으므로 금액으로 보지 않는다.
+_MONEY_RE = re.compile(
+    r"(?P<scaled>[0-9][0-9,\.]*|[일이삼사오육칠팔구십백천]+)\s*"
+    r"(?P<unit>억|만)\s*원?"
+    r"|(?P<won>[0-9][0-9,]*)\s*원"
+)
+_KOREAN_DIGIT = {
+    "일": 1, "이": 2, "삼": 3, "사": 4, "오": 5,
+    "육": 6, "칠": 7, "팔": 8, "구": 9,
+}
+_KOREAN_SMALL_UNIT = {"십": 10, "백": 100, "천": 1000}
 
 
-def _parse_won(num, unit):
-    v = float(num.replace(",", ""))
+def _parse_number(text):
+    """숫자 또는 '백', '이백오십' 같은 한글 수사를 정수로 변환한다."""
+    text = text.replace(",", "")
+    try:
+        return float(text)
+    except ValueError:
+        total = 0
+        digit = 0
+        for ch in text:
+            if ch in _KOREAN_DIGIT:
+                digit = _KOREAN_DIGIT[ch]
+            elif ch in _KOREAN_SMALL_UNIT:
+                total += (digit or 1) * _KOREAN_SMALL_UNIT[ch]
+                digit = 0
+            else:
+                raise ValueError("지원하지 않는 한글 숫자입니다: %s" % text)
+        return float(total + digit)
+
+
+def _parse_won(num, unit=None):
+    value = _parse_number(num)
     if unit == "만":
-        v *= 10_000
+        value *= 10_000
     elif unit == "억":
-        v *= 100_000_000
-    return int(round(v))
+        value *= 100_000_000
+    return int(round(value))
 
 
 def _find_amounts(text):
-    return [(m.start(), _parse_won(m.group(1), m.group(2)))
-            for m in re.finditer(_NUM, text)]
+    amounts = []
+    for match in _MONEY_RE.finditer(text):
+        if match.group("scaled") is not None:
+            value = _parse_won(match.group("scaled"), match.group("unit"))
+        else:
+            value = _parse_won(match.group("won"))
+        amounts.append((match.start(), value))
+    return amounts
+
+
+def _to_24_hour(period, hour):
+    """오전/오후/밤/새벽 표현을 24시간제 시각으로 바꾼다."""
+    hour = int(hour)
+    if period in ("오전", "새벽"):
+        return 0 if hour == 12 else hour
+    if period == "오후":
+        return 12 if hour == 12 else hour + 12
+    if period == "밤":
+        return 0 if hour == 12 else (hour + 12 if hour < 12 else hour)
+    return hour
 
 
 DAILY_KEYS = ["하루", "1일", "일일", "하루에", "당일", "일 누적", "하루 누적"]
@@ -256,13 +303,24 @@ def _rule_compile(text):
                 out["allowed_actions"].append(act)
             break
 
-    # 시간대
-    m = re.search(r"(밤|새벽|심야)", t)
-    if m and any(b in t for b in BLOCK_KEYS + VERIFY_KEYS):
-        out["time_window_start"], out["time_window_end"] = 7, 23
-    m = re.search(r"(\d{1,2})\s*시\s*(?:부터|~|-)\s*(\d{1,2})\s*시", t)
+    # 시간대: '오전 9시부터 오후 6시까지', '9시~18시'를 모두 처리한다.
+    m = re.search(
+        r"(?:(오전|오후|밤|새벽)\s*)?(\d{1,2})\s*시\s*"
+        r"(?:부터|~|-)\s*(?:(오전|오후|밤|새벽)\s*)?"
+        r"(\d{1,2})\s*시(?:까지)?",
+        t,
+    )
     if m:
-        out["time_window_start"], out["time_window_end"] = int(m.group(1)), int(m.group(2))
+        start_period, start_hour, end_period, end_hour = m.groups()
+        start = _to_24_hour(start_period, start_hour)
+        end = _to_24_hour(end_period or start_period, end_hour)
+        if 0 <= start <= 23 and 0 <= end <= 23 and start != end:
+            # 사용자가 금지한 구간이면 그 반대 구간을 허용 시간대로 저장한다.
+            if any(b in t for b in BLOCK_KEYS):
+                start, end = end, start
+            out["time_window_start"], out["time_window_end"] = start, end
+    elif re.search(r"밤|새벽|심야", t) and any(b in t for b in BLOCK_KEYS + VERIFY_KEYS):
+        out["time_window_start"], out["time_window_end"] = 6, 0
 
     # 유효기간
     m = re.search(r"(\d+)\s*(일|주|개월|달)\s*(?:동안|간|까지)?", t)

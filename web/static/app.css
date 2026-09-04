@@ -192,7 +192,7 @@ input:disabled { color: var(--text-faint); background: #eef1f5; cursor: not-allo
 /* ---------- 결과 화면 ---------- */
 .result-top { margin-bottom: 18px; }
 .result-bottom { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
-.left-col { display: flex; flex-direction: column; gap: 18px; }
+.left-col { display: flex; flex-direction: column; gap: 10px; }
 
 .summary-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 .summary-head h2 { margin: 0 0 6px; font-size: 21px; letter-spacing: -.02em; }
