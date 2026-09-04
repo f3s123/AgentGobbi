@@ -454,11 +454,22 @@ SCENARIOS = [
 
 SCENARIO_MAP = {s["id"]: s for s in SCENARIOS}
 
+VISIBLE_SCENARIO_IDS = {
+    "normal_daily",
+    "normal_large_transfer",
+    "limit_ratcheting",
+    "recipient_burst_night",
+    "cumulative_bypass",
+    "unauthorized_tool",
+}
+
 
 def list_scenarios(policy=None):
     out = []
     auto_limit, daily_limit = _policy_limits(policy)
     for s in SCENARIOS:
+        if s["id"] not in VISIBLE_SCENARIO_IDS:
+            continue
         item = {k: v for k, v in s.items() if k != "builder"}
         start_hour = _scenario_start_hour(s["id"], policy, s["start_hour"])
         if s["id"] == "limit_ratcheting":
