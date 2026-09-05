@@ -29,7 +29,7 @@
     <textarea id="input" rows="4" placeholder="위임 정책을 입력하세요.&#10;※허용 시간대 설정시 정확한 시간을 입력해주세요."></textarea>
     <div class="chips" id="examples"></div>
     <div class="btn-row" style="margin-top:16px">
-      <button class="btn primary" id="btn-compile">입력</button>
+      <button class="btn primary" id="btn-compile">정책 변환</button>
     </div>
     <div id="compile-err" style="margin-top:14px"></div>
   </div>
@@ -298,8 +298,14 @@ document.getElementById('btn-approve').addEventListener('click', async () => {
     editOpen = false;
     pending = null;
     await loadActive();
-    document.getElementById('compile-err').innerHTML =
-      '<div class="notice ok">위임 정책이 적용됐습니다. 시뮬레이션 화면에서 AI Agent의 행동을 검증해 보세요.</div>';
+    document.getElementById('compile-err').innerHTML = `
+      <div class="notice ok">
+        <div>위임 정책이 적용됐습니다.</div>
+        <a class="btn primary" href="/simulate.html"
+           style="display:inline-flex; margin-top:12px">
+          시나리오 선택하기
+        </a>
+      </div>`;
   } catch (e) {
     document.getElementById('compile-err').innerHTML = `<div class="notice err">${esc(e.message)}</div>`;
   } finally {
