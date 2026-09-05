@@ -36,6 +36,7 @@
 
   <div class="panel" id="preview" style="display:none">
     <h2 class="panel-title"> 위임 정책 확인</h2>
+    <div id="conversion-source" style="margin:-6px 0 12px"></div>
     <p class="muted small" id="summary" style="margin:-6px 0 16px"></p>
     <div class="policy-list" id="policy-rows"></div>
     <div id="assumptions" style="margin-top:14px"></div>
@@ -91,6 +92,16 @@ document.getElementById('examples').addEventListener('click', ev => {
   const b = ev.target.closest('.chip');
   if (b) document.getElementById('input').value = EXAMPLES[+b.dataset.i];
 });
+
+function policySourceBadge(source) {
+  if (source === 'gemini') {
+    return '<span class="source-badge gemini">생성형 AI(Gemini)로 변환됨</span>';
+  }
+  if (String(source || '').startsWith('rule-based')) {
+    return '<span class="source-badge rule">규칙 기반으로 변환됨</span>';
+  }
+  return '';
+}
 
 async function loadActive() {
   const el = document.getElementById('active-body');
@@ -226,6 +237,7 @@ function readPolicyEditor() {
 
 function renderPolicyPreview(policy, display) {
   pending = policy;
+  document.getElementById('conversion-source').innerHTML = policySourceBadge(policy.source);
   document.getElementById('summary').textContent = policy.summary_ko;
   document.getElementById('policy-rows').innerHTML = editOpen
     ? renderEditablePolicyRows(policy)
