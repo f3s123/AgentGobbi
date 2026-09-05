@@ -26,7 +26,7 @@ VIOLATION_SPEC = {
     "AUTO_LIMIT_EXCEEDED": ("자동송금 한도 초과", 45, "VERIFY"),
     "DAILY_LIMIT_EXCEEDED": ("1일 누적한도 초과", 40, "VERIFY"),
     "NEW_RECIPIENT_APPROVAL": ("신규 수취인 승인 필요", 25, "VERIFY"),
-    "OUTSIDE_TIME_WINDOW": ("허용 시간대 외 거래", 20, None),
+    "OUTSIDE_TIME_WINDOW": ("허용 시간대 외 거래", 20, "VERIFY"),
     "CATEGORY_NOT_ALLOWED": ("허용 목록에 없는 카테고리", 30, "VERIFY"),
 }
 
