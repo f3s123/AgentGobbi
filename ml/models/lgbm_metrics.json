@@ -1,6 +1,47 @@
 {
-  "roc_auc": 0.9998371432225938,
-  "pr_auc": 0.9987849077858506,
-  "n_train": 84358,
-  "n_test": 27045
+  "mode": "unified",
+  "features": [
+    "amount_to_mean",
+    "amt_to_auto_limit",
+    "is_new_recipient",
+    "is_transfer",
+    "is_night",
+    "amt_to_balance",
+    "is_balance_drain",
+    "tx_cnt_1h",
+    "tx_cnt_24h",
+    "new_recipient_cnt_1h",
+    "distinct_recipient_24h",
+    "cum1_to_daily_limit",
+    "cum24_to_baseline",
+    "cum_to_daily_limit",
+    "sec_since_prev_log",
+    "mean_interval_5_log",
+    "near_limit_repeat",
+    "fail_cnt_1h",
+    "retry_cnt_1h",
+    "amount_z_vs_baseline",
+    "tx_rate_vs_baseline",
+    "unknown_category"
+  ],
+  "n_train": 1959,
+  "n_test": 652,
+  "session_holdout": {
+    "roc_auc": 0.995874161939144,
+    "pr_auc": 0.9796958401684888,
+    "rows": 652,
+    "positives": 98
+  },
+  "unseen_low_and_slow_attack": {
+    "single_class": "RISKY",
+    "rows": 72,
+    "predicted_risky_rate": 0.375,
+    "mean_score": 36.74444235521244
+  },
+  "user_holdout_u006": {
+    "roc_auc": 0.997286862151727,
+    "pr_auc": 0.9920084271819642,
+    "rows": 333,
+    "positives": 74
+  }
 }

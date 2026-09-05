@@ -95,6 +95,5 @@ CATEGORY_LABEL = {
 }
 
 # --- 생성형 AI -----------------------------------------------------------
-LLM_MODEL = "claude-opus-5"
-LLM_ENABLED = bool(os.environ.get("ANTHROPIC_API_KEY") or
-                   os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+LLM_MODEL = "gemini-3.6-flash"  # Gemini 모델
+LLM_ENABLED = bool(os.environ.get("GOOGLE_API_KEY"))

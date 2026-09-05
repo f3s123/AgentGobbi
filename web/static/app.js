@@ -42,9 +42,6 @@ const PERM_ORDER = ['AUTO', 'VERIFY', 'READ_ONLY', 'STOP'];
 function permBadge(p) {
   return `<span class="perm ${p}"><span class="dot"></span>${p}</span>`;
 }
-function stagePill(p) {
-  return `<span class="stage-pill" style="color:${PERM_COLOR[p]}">${p}</span>`;
-}
 function won(n) {
   if (n === null || n === undefined) return '-';
   return Math.round(n).toLocaleString('ko-KR') + '원';

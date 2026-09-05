@@ -24,6 +24,7 @@ uvicorn==0.34.3
 pydantic==2.11.4
 
 # --- 생성형 AI (선택) ---
-# ANTHROPIC_API_KEY 가 설정된 경우에만 사용합니다.
+# GOOGLE_API_KEY 가 설정된 경우에만 사용합니다.
 # 없으면 동일 기능이 규칙 기반 경로로 동작하므로 설치하지 않아도 MVP는 완전히 실행됩니다.
-anthropic==1.1.0
+google-generativeai==0.8.3
+python-dotenv==1.0.1

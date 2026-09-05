@@ -18,6 +18,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# .env 파일에서 환경변수 로드
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException                       # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware               # noqa: E402
 from fastapi.responses import FileResponse                       # noqa: E402
@@ -111,6 +115,18 @@ def post_policy_compile(req: PolicyCompileRequest):
             "llm": llm_status()}
 
 
+@app.post("/api/policy/preview")
+def post_policy_preview(req: PolicyApproveRequest):
+    """사용자가 수정한 Policy를 서버 기준으로 정리한 뒤 미리보기만 반환한다."""
+    policy = sanitize_policy(req.policy)
+    policy["valid_until"] = (datetime.now()
+                             + timedelta(days=policy["valid_days"])).isoformat()
+    policy["source"] = req.policy.get("source", "user-edited")
+    policy["input_text"] = req.policy.get("input_text", "")
+    return {"policy": policy, "display": policy_display(policy),
+            "llm": llm_status()}
+
+
 @app.post("/api/policy/approve")
 def post_policy_approve(req: PolicyApproveRequest):
     """사용자가 변환 결과를 확인한 뒤 최종 승인한다."""
@@ -129,10 +145,11 @@ def post_policy_approve(req: PolicyApproveRequest):
 # ==========================================================================
 @app.get("/api/scenarios")
 def get_scenarios():
-    return {"scenarios": list_scenarios(),
+    policy = active_policy()
+    return {"scenarios": list_scenarios(policy),
             "policy_summary": {
-                "auto_limit": active_policy()["auto_limit"],
-                "daily_limit": active_policy()["daily_limit"],
+                "auto_limit": policy["auto_limit"],
+                "daily_limit": policy["daily_limit"],
             }}
 
 
@@ -143,7 +160,7 @@ def post_simulate(req: SimulateRequest):
 
     engine = get_engine()
     policy = active_policy()
-    scn, actions = build_actions(req.scenario_id)
+    scn, actions = build_actions(req.scenario_id, policy)
 
     history = []
     balance = float(OPENING_BALANCE)
