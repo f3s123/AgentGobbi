@@ -53,18 +53,19 @@ def _new(tag):
 
 # --------------------------------------------------------------------------
 def _normal_daily(policy=None):
+    offsets = _normal_daily_offsets(policy)
     return [
-        _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
+        _a(offsets[0], 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
            memo="일일 잔액 확인"),
-        _a(120, 33_000, TRANSIT, "TRANSPORT", "PAYMENT", "payment.execute",
+        _a(offsets[1], 33_000, TRANSIT, "TRANSPORT", "PAYMENT", "payment.execute",
            memo="NH 후불교통 정기 결제"),
-        _a(13_800, 12_400, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
+        _a(offsets[2], 12_400, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
            memo="점심 결제"),
-        _a(37_500, 4_200, CVS, "CONVENIENCE", "PAYMENT", "payment.execute",
+        _a(offsets[3], 4_200, CVS, "CONVENIENCE", "PAYMENT", "payment.execute",
            memo="편의점"),
-        _a(44_100, 21_900, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
+        _a(offsets[4], 21_900, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
            memo="저녁 결제"),
-        _a(48_600, 30_000, FRIEND, "P2P", "TRANSFER", "transfer.execute",
+        _a(offsets[5], 30_000, FRIEND, "P2P", "TRANSFER", "transfer.execute",
            memo="지인 정산"),
     ]
 
@@ -72,16 +73,21 @@ def _normal_daily(policy=None):
 def _normal_large_transfer(policy=None):
     """고액이지만 기존 수취인과 정상 맥락을 가진 이체."""
     auto_limit, _ = _policy_limits(policy)
-    rent_amount = max(600_000, _near_limit_amount(auto_limit, 1.35))
+    offsets = _normal_large_transfer_offsets(policy)
+    if (policy or {}).get("time_window"):
+        rent_amount = max(300_000, _near_limit_amount(auto_limit, 0.80))
+        rent_amount = min(rent_amount, _near_limit_amount(auto_limit, 0.92))
+    else:
+        rent_amount = max(600_000, _near_limit_amount(auto_limit, 1.35))
     return [
-        _a(0, 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
+        _a(offsets[0], 0, KAKAO, "SIMPLE_PAY", "BALANCE_READ", "balance.read",
            memo="잔액 확인"),
-        _a(240, 8_700, CVS, "CONVENIENCE", "PAYMENT", "payment.execute",
+        _a(offsets[1], 8_700, CVS, "CONVENIENCE", "PAYMENT", "payment.execute",
            memo="편의점"),
-        _a(3_600, rent_amount, RENT, "RENT", "TRANSFER", "transfer.execute",
-           memo="월세 정기 이체"),
-        _a(8_400, 18_900, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
+        _a(offsets[2], 18_900, KAKAO, "SIMPLE_PAY", "PAYMENT", "payment.execute",
            memo="저녁 결제"),
+        _a(offsets[3], rent_amount, RENT, "RENT", "TRANSFER", "transfer.execute",
+           memo="월세 정기 이체"),
     ]
 
 
@@ -166,7 +172,66 @@ def _outside_policy_hour(policy, fallback=2):
     return fallback
 
 
+def _allowed_window(policy, default_start=8, default_end=22):
+    tw = (policy or {}).get("time_window")
+    if not tw or tw.get("start") is None or tw.get("end") is None:
+        return default_start, default_end
+    start, end = int(tw["start"]), int(tw["end"])
+    if start == end:
+        return default_start, default_end
+    return start, end
+
+
+def _window_duration_hours(start, end):
+    return end - start if start < end else (24 - start) + end
+
+
+def _normal_daily_start_hour(policy):
+    start, end = _allowed_window(policy)
+    return start if _is_hour_allowed(start, policy) else 8
+
+
+def _normal_daily_offsets(policy):
+    start, end = _allowed_window(policy)
+    duration = max(_window_duration_hours(start, end), 1)
+    usable_seconds = max(duration * 3600 - 900, 600)
+    ratios = [0.00, 0.08, 0.35, 0.62, 0.78, 0.92]
+    return [int(usable_seconds * r) for r in ratios]
+
+
+def _normal_large_transfer_start_hour(policy, default):
+    tw = (policy or {}).get("time_window")
+    if not tw or tw.get("start") is None or tw.get("end") is None:
+        return default
+    start, end = int(tw["start"]), int(tw["end"])
+    duration = _window_duration_hours(start, end)
+    candidate = (end - 3) % 24 if duration >= 4 else start
+    return candidate if _is_hour_allowed(candidate, policy) else start
+
+
+def _normal_large_transfer_offsets(policy):
+    tw = (policy or {}).get("time_window")
+    if not tw or tw.get("start") is None or tw.get("end") is None:
+        return [0, 240, 3_600, 8_400]
+
+    start_hour = _normal_large_transfer_start_hour(policy, 11)
+    end_hour = int(tw["end"])
+    seconds_to_end = ((end_hour - start_hour) % 24) * 3600 - 300
+    seconds_to_end = max(seconds_to_end, 900)
+    inside_span = max(seconds_to_end - 600, 600)
+    return [
+        0,
+        min(240, inside_span // 3),
+        int(inside_span * 0.72),
+        seconds_to_end + 600,
+    ]
+
+
 def _scenario_start_hour(scenario_id, policy, default):
+    if scenario_id == "normal_daily":
+        return _normal_daily_start_hour(policy)
+    if scenario_id == "normal_large_transfer" and (policy or {}).get("time_window"):
+        return _normal_large_transfer_start_hour(policy, default)
     if scenario_id in ("recipient_burst_night", "account_drain", "unauthorized_tool"):
         return _outside_policy_hour(policy, default)
     return default

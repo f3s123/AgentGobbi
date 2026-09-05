@@ -173,6 +173,13 @@ input:disabled { color: var(--text-faint); background: #eef1f5; cursor: not-allo
 .notice.ok { background: #e8f7ed; border-color: #a9dfb8; color: #126b33; }
 .notice.err { background: #fff0ee; border-color: #f5b5af; color: #b42318; }
 
+.source-badge {
+  display: inline-block; font-size: 12px; font-weight: 500;
+  color: var(--text-faint);
+}
+.source-badge.gemini,
+.source-badge.rule { color: var(--text-faint); }
+
 /* ---------- 시나리오 카드 ---------- */
 .scn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
 .scn {
