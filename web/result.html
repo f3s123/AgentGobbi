@@ -211,7 +211,10 @@ function render(r) {
        <div class="left-col">${permCard(r)}${scoreCard(r)}</div>
        <div>${explainCard(r)}</div>
      </div>` +
-    timeline(r);
+    timeline(r) +
+    `<div class="btn-row" style="justify-content:center; margin-top:18px">
+       <a class="btn primary" href="/simulate.html">다른 시나리오 실행하기</a>
+     </div>`;
 
   const btn = document.getElementById('btn-restore');
   if (btn) btn.addEventListener('click', async () => {
