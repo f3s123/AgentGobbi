@@ -15,7 +15,7 @@ numpy==2.4.4
 pandas==3.0.2
 scikit-learn==1.8.0
 lightgbm==4.6.0
-joblib==1.5.3
+joblib==1.6.0
 openpyxl==3.1.5          # 농협 입출금내역 xlsx 읽기
 
 # --- API 서버 ---
