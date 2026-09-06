@@ -39,16 +39,6 @@ document.getElementById('examples').addEventListener('click', ev => {
   if (b) document.getElementById('input').value = EXAMPLES[+b.dataset.i];
 });
 
-function policySourceBadge(source) {
-  if (source === 'gemini') {
-    return '<span class="source-badge gemini">생성형 AI(Gemini)로 변환됨</span>';
-  }
-  if (String(source || '').startsWith('rule-based')) {
-    return '<span class="source-badge rule">규칙 기반으로 변환됨</span>';
-  }
-  return '';
-}
-
 async function loadActive() {
   const el = document.getElementById('active-body');
   try {
@@ -183,7 +173,6 @@ function readPolicyEditor() {
 
 function renderPolicyPreview(policy, display) {
   pending = policy;
-  document.getElementById('conversion-source').innerHTML = policySourceBadge(policy.source);
   document.getElementById('summary').textContent = policy.summary_ko;
   document.getElementById('policy-rows').innerHTML = editOpen
     ? renderEditablePolicyRows(policy)
