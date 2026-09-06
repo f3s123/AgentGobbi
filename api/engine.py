@@ -10,6 +10,9 @@ Risk Engine — 두 모델을 묶어 Delegation Risk Score 를 산출한다.
 동시에 사용자 설명 화면에 쓸 8개 근거(factors)를 함께 만들어 돌려준다.
 """
 import json
+import io
+import hashlib
+import math
 import sys
 from pathlib import Path
 
@@ -27,19 +30,28 @@ from policy_engine import (check_policy, combine, decide_permission,  # noqa: E4
 from scoring_util import percentile_score  # noqa: E402
 
 
+def verified_model(path):
+    """Hash and deserialize the same bytes to avoid a verification/load race."""
+    manifest = json.loads((Path(__file__).parent / 'model_checksums.json').read_text(encoding='utf-8'))
+    content = path.read_bytes()
+    if hashlib.sha256(content).hexdigest() != manifest.get(path.name):
+        raise RuntimeError('Model integrity verification failed')
+    return joblib.load(io.BytesIO(content))
+
+
 def _won(x):
     return "%s원" % format(int(round(float(x))), ",")
 
 
 class RiskEngine:
     def __init__(self):
-        lg = joblib.load(MODEL_DIR / "lgbm_sequence.pkl")
+        lg = verified_model(MODEL_DIR / "lgbm_sequence.pkl")
         self.lgbm = lg["model"]
         self.lgbm_features = lg.get("features", SEQ_FEATURES)
         self.lgbm_metrics = lg["metrics"]
         self.lgbm_importance = lg["importance"]
 
-        io = joblib.load(MODEL_DIR / "iforest_personal.pkl")
+        io = verified_model(MODEL_DIR / "iforest_personal.pkl")
         self.iforest = io["model"]
         self.scaler = io["scaler"]
         self.ref_scores = io["ref_scores"]
@@ -77,7 +89,10 @@ class RiskEngine:
 
         seq_score, seq_f = self.sequence_risk(action, history, policy)
         pers_score, pers_f = self.personal_deviation(action, history)
-        pol_score, violations, floor = check_policy(action, policy, cum24)
+        policy_action = {**action, 'is_new_recipient': bool(seq_f['is_new_recipient'])}
+        pol_score, violations, floor = check_policy(policy_action, policy, cum24)
+        if not all(math.isfinite(v) for v in (seq_score, pers_score, pol_score)):
+            raise RuntimeError('Non-finite risk score')
 
         total = combine(seq_score, pers_score, pol_score)
         permission = decide_permission(total, floor)

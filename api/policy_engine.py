@@ -19,7 +19,9 @@ from config import (ACTION_TO_TOOL, PERMISSION_ALLOWS, PERMISSION_DESC,
 
 # 정책 위반 항목: (코드, 라벨, 가중치, 최소 강제 권한)
 VIOLATION_SPEC = {
-    "POLICY_EXPIRED": ("위임 유효기간 만료", 70, "READ_ONLY"),
+    "POLICY_EXPIRED": ("위임 유효기간 만료", 70, "STOP"),
+    "INVALID_POLICY": ("위임정책 오류", 100, "STOP"),
+    "NEW_RECIPIENT_BLOCKED": ("신규 수취인 차단", 70, "READ_ONLY"),
     "ACTION_NOT_DELEGATED": ("위임하지 않은 금융행위", 65, "READ_ONLY"),
     "UNAUTHORIZED_TOOL": ("위임하지 않은 금융 Tool 호출", 60, "READ_ONLY"),
     "BLOCKED_CATEGORY": ("차단 카테고리 거래", 50, "VERIFY"),
@@ -45,17 +47,17 @@ def check_policy(action, policy, cum_amount_24h, now=None):
         try:
             if datetime.fromisoformat(str(valid_until)) < (now or datetime.now()):
                 violations.append(("POLICY_EXPIRED", "위임 유효기간이 지났습니다."))
-        except ValueError:
-            pass
+        except (ValueError, TypeError):
+            violations.append(("INVALID_POLICY", "정책 유효기간을 확인할 수 없습니다."))
 
     action_type = action.get("action_type")
     allowed_actions = policy.get("allowed_actions") or []
-    if action_type and allowed_actions and action_type not in allowed_actions:
+    if not action_type or action_type not in allowed_actions:
         violations.append(("ACTION_NOT_DELEGATED",
                            "'%s' 는 위임 범위에 없는 금융행위입니다." % action_type))
 
     allowed_tools = policy.get("allowed_tools")
-    if allowed_tools and tool and tool not in allowed_tools:
+    if tool and allowed_tools is not None and tool not in allowed_tools:
         violations.append(("UNAUTHORIZED_TOOL",
                            "'%s' 기능은 위임하지 않았습니다." % TOOL_LABEL.get(tool, tool)))
 
@@ -68,13 +70,13 @@ def check_policy(action, policy, cum_amount_24h, now=None):
         violations.append(("CATEGORY_NOT_ALLOWED", "허용 목록에 없는 거래 유형입니다."))
 
     auto_limit = float(policy.get("auto_limit") or 0)
-    if auto_limit and amount > auto_limit:
+    if amount > auto_limit:
         violations.append(("AUTO_LIMIT_EXCEEDED",
                            "건당 자동실행 한도 %s원을 %s원 초과했습니다."
                            % (f"{int(auto_limit):,}", f"{int(amount - auto_limit):,}")))
 
     daily_limit = float(policy.get("daily_limit") or 0)
-    if daily_limit and cum_amount_24h > daily_limit:
+    if cum_amount_24h > daily_limit:
         violations.append(("DAILY_LIMIT_EXCEEDED",
                            "1일 누적한도 %s원을 넘어섰습니다 (누적 %s원)."
                            % (f"{int(daily_limit):,}", f"{int(cum_amount_24h):,}")))
@@ -82,7 +84,7 @@ def check_policy(action, policy, cum_amount_24h, now=None):
     nr = policy.get("new_recipient") or {}
     if is_new and nr.get("action") in ("VERIFY", "BLOCK"):
         if amount >= float(nr.get("amount_threshold") or 0):
-            violations.append(("NEW_RECIPIENT_APPROVAL",
+            violations.append(("NEW_RECIPIENT_BLOCKED" if nr['action'] == 'BLOCK' else "NEW_RECIPIENT_APPROVAL",
                                "처음 보는 수취인입니다. 사전 승인 대상으로 설정되어 있습니다."))
 
     tw = policy.get("time_window")
@@ -168,6 +170,8 @@ def enforce(permission, action):
     """
     allows = PERMISSION_ALLOWS[permission]
     tool = action.get("tool") or ACTION_TO_TOOL.get(action.get("action_type", ""), "")
+    if not tool or tool != ACTION_TO_TOOL.get(action.get('action_type')):
+        return 'BLOCKED'
     is_read = tool in ("balance.read", "history.read")
 
     if is_read:

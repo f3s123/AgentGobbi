@@ -14,7 +14,7 @@ const API = {
 async function handle(res) {
   const text = await res.text();
   let data;
-  try { data = JSON.parse(text); } catch { data = { detail: text }; }
+  try { data = JSON.parse(text); } catch { data = { detail: '서버 응답을 확인할 수 없습니다.' }; }
   if (!res.ok) throw new Error(data.detail || ('요청 실패 (' + res.status + ')'));
   return data;
 }
@@ -40,6 +40,7 @@ const PERM_COLOR = {
 const PERM_ORDER = ['AUTO', 'VERIFY', 'READ_ONLY', 'STOP'];
 
 function permBadge(p) {
+  if (!Object.hasOwn(PERM_LABEL, p)) p = 'STOP';
   return `<span class="perm ${p}"><span class="dot"></span>${p}</span>`;
 }
 function won(n) {

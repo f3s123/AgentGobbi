@@ -1,5 +1,7 @@
 # 에이전트고삐
 
+> **2026-09-06 보안 변경:** 로그인 기능 없이 단일 서비스 상태를 사용합니다. AWS에서는 접근 가능한 IP 대역을 제한하며, 외부 Agent 평가 API만 별도 API 키를 요구합니다. 최신 변경 내역은 [보안 개선 보고서](SECURITY_REPORT.md)를 확인하세요.
+
 **금융 AI Agent를 위한 개인 맞춤형 동적 위임 안전장치**
 _"AI에게 맡기되, 통제는 내가."_
 
@@ -40,7 +42,7 @@ cd api && python -m uvicorn main:app --host 127.0.0.1 --port 8000
 cd ml && python gen_paysim.py && python build_user_profile.py && python gen_bench.py && python train_lightgbm.py && python train_isolation_forest.py
 ```
 
-7개 시나리오의 권한 판정을 한 번에 검증하려면:
+9개 시나리오의 권한 판정을 한 번에 검증하려면:
 
 ```bash
 python verify.py
@@ -53,7 +55,7 @@ python verify.py
 | 페이지 | 경로 | 내용 |
 |---|---|---|
 | 위임정책 설정 | `/index.html` | 자연어로 위임 조건 입력 → 생성형 AI가 구조화 → **사용자가 변환 결과를 확인한 뒤 승인** |
-| 시뮬레이션 | `/simulate.html` | 시나리오 7종 중 선택 → 시뮬레이션 시작 |
+| 시뮬레이션 | `/simulate.html` | 시나리오 9종 중 선택 → 시뮬레이션 시작 |
 | 결과 | `/result.html` | 상단 행위 요약 / 좌하단 권한 · 위험도 점수 / 우하단 자세한 설명 · 분석 항목 8가지 · 행동 타임라인 |
 
 ---
@@ -87,8 +89,8 @@ python verify.py
 | `STOP` | 금지 | 금지 (Kill Switch) | 78 – 100 |
 
 **권한 축소는 자동, 복원은 사용자 승인 필수.**
-세션 안에서 권한은 제한이 강해지는 방향으로만 움직입니다(Ratchet).
-되돌리려면 `POST /api/permission/restore` 에 `user_confirmed: true` 가 있어야 하고,
+서버에 저장된 평가 흐름에서 권한은 제한이 강해지는 방향으로만 움직입니다(Ratchet).
+되돌리려면 시뮬레이션 최초 응답에서 받은 일회성 토큰을 `POST /api/permission/restore`에 제출해야 하며,
 현재보다 넓은 등급으로만 복원할 수 있습니다.
 
 정책 위반은 점수와 별개로 **최소 강제 권한**을 갖습니다.
@@ -177,7 +179,7 @@ LIMIT_RATCHETING  1.000    PAYSIM_FRAUD      1.000
 
 ## 5. 생성형 AI
 
-`ANTHROPIC_API_KEY` 가 설정되어 있으면 **Claude(`claude-opus-5`)** 를 호출하고,
+`GOOGLE_API_KEY`와 `LLM_MODEL`이 설정되어 있으면 **Gemini**를 호출하고,
 없으면 같은 입력으로 규칙 기반 생성기가 한국어 결과를 만듭니다.
 따라서 API 키 없이도 MVP 전체가 완전히 동작합니다.
 
@@ -251,19 +253,19 @@ LIMIT_RATCHETING  1.000    PAYSIM_FRAUD      1.000
 | 메서드 | 경로 | 설명 |
 |---|---|---|
 | `GET` | `/api/health` | 상태 + 생성형 AI 모드 |
-| `GET` | `/api/models` | 모델 성능 · 사용자 Baseline 요약 |
+| `GET` | `/api/models` | 모델 성능 요약(Baseline 상세 제외) |
 | `GET` | `/api/policy` | 현재 적용 중인 위임정책 |
 | `POST` | `/api/policy/compile` | 자연어 → 구조화 정책 (미리보기, 아직 적용 안 함) |
-| `POST` | `/api/policy/approve` | 사용자 확인 후 정책 활성화 |
+| `POST` | `/api/policy/approve` | 서버 발급 초안·승인 토큰으로 정책 활성화 |
 | `GET` | `/api/scenarios` | 시나리오 목록 |
 | `POST` | `/api/simulate` | 시뮬레이션 실행 |
 | `GET` | `/api/result/{run_id}` | 결과 조회 |
-| `POST` | `/api/permission/restore` | 권한 복원 (`user_confirmed: true` 필수) |
+| `POST` | `/api/permission/restore` | 최초 실행 응답의 일회성 토큰으로 권한 복원 |
 | `POST` | `/api/evaluate` | 단건 평가 — 외부 Agent 연동용 |
 
-`/api/evaluate` 로 연동할 때는 **직전 행동 이력을 `history` 로 함께 넘겨야** 시퀀스 위험도가 산출됩니다.
-이력 없이 1건만 보내면 시퀀스 축은 0이 되고 개인 이탈도와 정책 검증만 반영됩니다
-(단건 판정만으로는 연속 이상행동을 잡을 수 없다는 것이 이 서비스의 출발점입니다).
+`/api/evaluate`는 `X-Agent-API-Key`와 고유한 `request_id`를 요구합니다. 거래 이력과 시간은
+클라이언트 요청을 신뢰하지 않고 서버가 누적합니다. AWS 운영 모드에서는 신뢰된 금융 데이터 연동 전까지
+이 API를 503으로 차단합니다.
 
 ---
 
@@ -310,7 +312,13 @@ LIMIT_RATCHETING  1.000    PAYSIM_FRAUD      1.000
 
 - 실제 금융 API·AI Agent와 연결되어 있지 않습니다. 시나리오 시뮬레이션으로 동작을 재현합니다.
 - 사용자 Baseline은 1인분(농협 입출금내역 1개월 → 12개월 증강)입니다. 다중 사용자는 미지원입니다.
-- 위임정책과 시뮬레이션 결과는 서버 메모리에 저장되며 재시작 시 초기화됩니다.
+- 위임정책과 시뮬레이션 결과는 로컬 SQLite 또는 AWS PostgreSQL에 저장됩니다.
 - FinDelegationBench와 PaySim은 모두 합성 데이터입니다. 실계좌 데이터로 재학습이 필요합니다.
-- `ANTHROPIC_API_KEY` 미설정 시 생성형 AI 두 기능은 규칙 기반 경로로 동작합니다.
+- `GOOGLE_API_KEY` 또는 `LLM_MODEL` 미설정 시 생성형 AI 두 기능은 규칙 기반 경로로 동작합니다.
 - VERIFY 단계의 실제 본인인증(생체·PIN) 연동은 구현하지 않았습니다. 승인 여부만 상태로 다룹니다.
+
+## 10. 보안 및 AWS 배포
+
+이 서비스에는 로그인·사용자 계정 기능이 없으며 정책과 결과는 서비스 전체의 단일 상태로 관리됩니다. AWS 배포 시 ALB의 `AllowedClientCidr`를 사내망·VPN·시연장 IP로 제한해야 합니다. 외부 Agent의 `/api/evaluate` 호출만 `X-Agent-API-Key`를 요구하며, 키는 AWS Secrets Manager에서 주입합니다.
+
+상세 구성은 `deploy/README.md`, 변경 내역은 `SECURITY_REPORT.md`를 참고하세요. 데이터셋과 기존 모델 파일은 이번 보안 수정에서 변경하지 않았습니다.
