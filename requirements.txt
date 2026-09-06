@@ -11,7 +11,7 @@
 #   pip install -r requirements.txt
 
 # --- 데이터 / 머신러닝 ---
-numpy==2.4.4
+numpy==2.5.2
 pandas==3.0.2
 scikit-learn==1.8.0
 lightgbm==4.6.0
